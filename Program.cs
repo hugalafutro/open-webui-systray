@@ -1,8 +1,8 @@
-namespace WebSystray;
+namespace OpenWebUiSystray;
 
 static class Program
 {
-    private const string SingleInstanceMutexName = @"Local\WebSystray-open-webui-desktop";
+    private const string SingleInstanceMutexName = @"Local\OpenWebUiSystray-single-instance";
 
     [STAThread]
     static void Main()

@@ -1,4 +1,4 @@
-namespace WebSystray;
+namespace OpenWebUiSystray;
 
 static class Startup
 {
@@ -10,9 +10,9 @@ static class Startup
             return true;
 
         string? initial = null;
-        if (File.Exists(AppConfig.ConfigPath))
+        if (AppConfig.ExistingConfigFilePath is { } cfgPath)
         {
-            initial = File.ReadAllLines(AppConfig.ConfigPath)
+            initial = File.ReadAllLines(cfgPath)
                 .Select(static l => l.Trim())
                 .FirstOrDefault(static l => l.Length > 0 && !l.StartsWith('#'));
         }
@@ -29,7 +29,7 @@ static class Startup
             MessageBox.Show(
                 null,
                 $"Could not save configuration file:\n{ex.Message}",
-                "Web Systray",
+                "Open WebUI Systray",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
             return false;

@@ -1,6 +1,6 @@
 using Microsoft.Web.WebView2.WinForms;
 
-namespace WebSystray;
+namespace OpenWebUiSystray;
 
 sealed class MainForm : Form
 {
@@ -10,7 +10,7 @@ sealed class MainForm : Form
     public MainForm(string startUrl)
     {
         _startUrl = startUrl;
-        Text = "open-webui-desktop";
+        Text = "Open WebUI Systray";
         Size = new System.Drawing.Size(1280, 800);
         StartPosition = FormStartPosition.Manual;
         var wa = (Screen.PrimaryScreen ?? Screen.AllScreens[0]).WorkingArea;

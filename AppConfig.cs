@@ -1,18 +1,25 @@
-namespace WebSystray;
+namespace OpenWebUiSystray;
 
 static class AppConfig
 {
-    internal const string FileName = "web-systray.cfg";
+    internal const string FileName = "open-webui-systray.cfg";
+    private const string LegacyFileName = "web-systray.cfg";
 
     internal static string ConfigPath => Path.Combine(AppContext.BaseDirectory, FileName);
+
+    private static string LegacyConfigPath => Path.Combine(AppContext.BaseDirectory, LegacyFileName);
+
+    internal static string? ExistingConfigFilePath =>
+        File.Exists(ConfigPath) ? ConfigPath : File.Exists(LegacyConfigPath) ? LegacyConfigPath : null;
 
     internal static bool TryLoad(out string url)
     {
         url = "";
-        if (!File.Exists(ConfigPath))
+        var path = File.Exists(ConfigPath) ? ConfigPath : LegacyConfigPath;
+        if (!File.Exists(path))
             return false;
 
-        foreach (var raw in File.ReadAllLines(ConfigPath))
+        foreach (var raw in File.ReadAllLines(path))
         {
             var line = raw.Trim();
             if (line.Length == 0 || line.StartsWith('#'))
@@ -75,7 +82,7 @@ static class AppConfig
 
         internal UrlSetupForm(string initial)
         {
-            Text = "Web Systray — server address";
+            Text = "Open WebUI Systray — server address";
             FormBorderStyle = FormBorderStyle.FixedDialog;
             StartPosition = FormStartPosition.CenterScreen;
             MaximizeBox = false;

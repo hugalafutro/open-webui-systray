@@ -2,7 +2,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 
-namespace WebSystray;
+namespace OpenWebUiSystray;
 
 sealed class TrayApplicationContext : ApplicationContext
 {
@@ -21,7 +21,7 @@ sealed class TrayApplicationContext : ApplicationContext
         _trayIcon = new NotifyIcon
         {
             Icon = GenerateIcon(),
-            Text = "open-webui-desktop",
+            Text = "Open WebUI Systray",
             ContextMenuStrip = contextMenu,
             Visible = true
         };

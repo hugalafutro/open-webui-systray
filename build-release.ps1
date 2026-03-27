@@ -1,7 +1,7 @@
-# Clean and rebuild Release configuration for web-systray.
+# Clean and rebuild Release configuration for open-webui-systray.
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
-$csproj = Join-Path $root 'web-systray.csproj'
+$csproj = Join-Path $root 'open-webui-systray.csproj'
 
 Push-Location $root
 try {
