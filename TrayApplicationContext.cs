@@ -37,9 +37,22 @@ sealed class TrayApplicationContext : ApplicationContext
         if (_mainForm == null || _mainForm.IsDisposed)
         {
             _mainForm = new MainForm(_startUrl) { Icon = _trayIcon.Icon };
+            ShowMainWindow();
+            return;
         }
 
-        _mainForm.Show();
+        if (_mainForm.Visible && _mainForm.WindowState != FormWindowState.Minimized)
+        {
+            _mainForm.Hide();
+            return;
+        }
+
+        ShowMainWindow();
+    }
+
+    private void ShowMainWindow()
+    {
+        _mainForm!.Show();
         _mainForm.WindowState = FormWindowState.Normal;
         _mainForm.BringToFront();
         _mainForm.Activate();
