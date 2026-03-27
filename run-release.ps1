@@ -1,6 +1,3 @@
-# Launches the newest *.exe in bin\Release\net8.0-windows (detached; no wait).
-# Silent (no PowerShell window): double-click run-release.cmd in this folder, or run:
-#   powershell.exe -NoLogo -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File ".\run-release.ps1"
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
