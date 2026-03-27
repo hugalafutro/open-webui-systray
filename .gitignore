@@ -16,7 +16,7 @@ build/
 *.egg
 pip-wheel-metadata/
 
-# Build outputs (legacy .NET — harmless if present)
+# Build outputs (legacy .NET - harmless if present)
 [Bb]in/
 [Oo]bj/
 [Ll]og/

@@ -55,16 +55,16 @@ Only **https://** URLs with a host are accepted.
 
 ## Behavior
 
-- **Single instance** — a second copy exits immediately (lock file under `$XDG_RUNTIME_DIR` or a temp fallback).
-- **Tray icon** — left-click shows or focuses the browser window; **Quit** is in the tray context menu.
-- **Close button** — hides the window to the tray (does not exit the app).
-- **Same-host navigation** — the embedded browser only allows navigations on the host of the configured URL (plus `about:`, `data:`, `blob:`, and fragment-only URLs), matching the previous WebView2 behavior.
+- **Single instance** - a second copy exits immediately (lock file under `$XDG_RUNTIME_DIR` or a temp fallback).
+- **Tray icon** - left-click shows or focuses the browser window; **Quit** is in the tray context menu.
+- **Close button** - hides the window to the tray (does not exit the app).
+- **Same-host navigation** - the embedded browser only allows navigations on the host of the configured URL (plus `about:`, `data:`, `blob:`, and fragment-only URLs), matching the previous WebView2 behavior.
 
 ## Project layout
 
-- `pyproject.toml` — Python package metadata and dependencies
-- `run.sh` — run from a clone without `pip install`
-- `src/open_webui_systray/` — application code (`__main__.py`, config, dialog, tray, main window)
+- `pyproject.toml` - Python package metadata and dependencies
+- `run.sh` - run from a clone without `pip install`
+- `src/open_webui_systray/` - application code (`__main__.py`, config, dialog, tray, main window)
 
 ## License
 
