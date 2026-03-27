@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+import sys
 from urllib.parse import urlparse
 
-from PyQt6.QtCore import QUrl, Qt
-from PyQt6.QtGui import QColor, QCloseEvent, QIcon
+from PyQt6.QtCore import QTimer, QUrl, Qt
+from PyQt6.QtGui import QColor, QCloseEvent, QGuiApplication, QIcon, QShowEvent
 from PyQt6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineSettings
 from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWidgets import QApplication, QMainWindow, QMessageBox
+from PyQt6.QtWidgets import QApplication, QMainWindow, QMessageBox, QSystemTrayIcon
 
 from open_webui_systray.config import data_dir
+
+_EDGE_MARGIN = 8
 
 
 def _is_navigation_allowed(uri_string: str, allowed_host: str) -> bool:
@@ -50,19 +53,22 @@ class RestrictedWebEnginePage(QWebEnginePage):
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, start_url: str, window_icon: QIcon, parent=None) -> None:
+    def __init__(
+        self,
+        start_url: str,
+        window_icon: QIcon,
+        tray: QSystemTrayIcon | None = None,
+        parent=None,
+    ) -> None:
         super().__init__(parent)
         self._start_url = start_url
         self._force_quit = False
+        self._page: RestrictedWebEnginePage | None = None
+        self._tray = tray
 
         self.setWindowTitle("Open WebUI Systray")
         self.resize(1280, 800)
         self.setWindowIcon(window_icon)
-
-        screen = self.screen() or QApplication.primaryScreen()
-        if screen is not None:
-            wa = screen.availableGeometry()
-            self.move(wa.right() - self.width(), wa.bottom() - self.height())
 
         self.setStyleSheet("background-color: black;")
 
@@ -72,28 +78,81 @@ class MainWindow(QMainWindow):
             raise ValueError("Start URL must include a host.")
 
         storage_root = data_dir()
-        profile = QWebEngineProfile("OpenWebUiSystray")
+        # defaultProfile() avoids PyQt/QtWebEngine destroying a custom profile before the page
+        # (see Qt warning "Release of profile requested but WebEnginePage still not deleted").
+        profile = QWebEngineProfile.defaultProfile()
         profile.setPersistentStoragePath(str(storage_root / "qtwebengine"))
         profile.setCachePath(str(storage_root / "qtwebengine-cache"))
 
-        page = RestrictedWebEnginePage(allowed_host, profile, self)
-        settings = page.settings()
+        self._web_view = QWebEngineView(self)
+        self._page = RestrictedWebEnginePage(allowed_host, profile, self._web_view)
+        settings = self._page.settings()
         settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, True)
 
-        self._web_view = QWebEngineView(self)
-        self._web_view.setPage(page)
+        self._web_view.setPage(self._page)
         self._web_view.setStyleSheet("background-color: black;")
-        page.setBackgroundColor(QColor(0, 0, 0))
+        self._page.setBackgroundColor(QColor(0, 0, 0))
         self._web_view.setZoomFactor(0.9)
         self.setCentralWidget(self._web_view)
 
         self._web_view.load(QUrl(start_url))
+
+    def position_near_tray(self, tray: QSystemTrayIcon) -> None:
+        """Place top-right or bottom-right of the work area from tray geometry, else platform fallback."""
+        w, h = self.width(), self.height()
+        g = tray.geometry()
+        screen = None
+
+        if g.width() > 0 and g.height() > 0:
+            screen = QGuiApplication.screenAt(g.center())
+        if screen is None:
+            wh = self.windowHandle()
+            if wh is not None:
+                screen = wh.screen()
+        if screen is None:
+            screen = self.screen() or QApplication.primaryScreen()
+        if screen is None:
+            return
+        wa = screen.availableGeometry()
+
+        if g.width() > 0 and g.height() > 0:
+            tray_top = g.center().y() < wa.center().y()
+            x = wa.right() - w - _EDGE_MARGIN
+            if tray_top:
+                y = wa.top() + _EDGE_MARGIN
+            else:
+                y = wa.bottom() - h - _EDGE_MARGIN
+        else:
+            x = wa.right() - w - _EDGE_MARGIN
+            if sys.platform == "win32":
+                y = wa.bottom() - h - _EDGE_MARGIN
+            else:
+                y = wa.top() + _EDGE_MARGIN
+
+        x = max(wa.left(), min(x, wa.right() - w))
+        y = max(wa.top(), min(y, wa.bottom() - h))
+        self.move(x, y)
+
+    def showEvent(self, event: QShowEvent) -> None:
+        super().showEvent(event)
+        if self._tray is not None:
+            self.position_near_tray(self._tray)
+            QTimer.singleShot(0, self._deferred_position_after_show)
+            QTimer.singleShot(50, self._deferred_position_after_show)
+
+    def _deferred_position_after_show(self) -> None:
+        if self._tray is not None:
+            self.position_near_tray(self._tray)
 
     def prepare_force_quit(self) -> None:
         self._force_quit = True
 
     def closeEvent(self, event: QCloseEvent) -> None:
         if self._force_quit:
+            # Drop the page before the window is destroyed so the profile is not torn down first.
+            if self._web_view is not None:
+                self._web_view.setPage(None)
+            self._page = None
             event.accept()
             return
         event.ignore()

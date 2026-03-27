@@ -45,6 +45,7 @@ class TrayManager:
     def __init__(self, start_url: str) -> None:
         self._start_url = start_url
         self._main: MainWindow | None = None
+        self._main_window_loading = False
 
         self._icon = generate_tray_icon()
         self._tray = QSystemTrayIcon(self._icon)
@@ -75,8 +76,11 @@ class TrayManager:
 
     def _show_main_window(self) -> None:
         if self._main is None:
+            if self._main_window_loading:
+                return
+            self._main_window_loading = True
             try:
-                self._main = MainWindow(self._start_url, self._icon)
+                self._main = MainWindow(self._start_url, self._icon, self._tray)
             except Exception as ex:
                 QMessageBox.critical(
                     None,
@@ -85,7 +89,10 @@ class TrayManager:
                 )
                 QApplication.quit()
                 return
+            finally:
+                self._main_window_loading = False
 
+        self._main.position_near_tray(self._tray)
         self._main.showNormal()
         self._main.raise_()
         self._main.activateWindow()
