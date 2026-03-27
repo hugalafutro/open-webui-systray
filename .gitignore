@@ -1,4 +1,4 @@
-# Build outputs (Debug, Release, publish — all .exe/.dll land here, not in git)
+# Build outputs (Debug, Release, publish - all .exe/.dll land here, not in git)
 [Bb]in/
 [Oo]bj/
 [Ll]og/
@@ -13,7 +13,7 @@ dist/
 # WebView2 profile (cookies, cache, sessions)
 WebView2Data/
 
-# Cursor (local project cache, MCP descriptors, workspace metadata — not app source)
+# Cursor (local project cache, MCP descriptors, workspace metadata - not app source)
 .cursor/
 
 # VS Code / Cursor multi-root workspace files (often machine-specific paths)

@@ -78,7 +78,7 @@ static class AppConfig
 
         internal UrlSetupForm(string initial)
         {
-            Text = "Open WebUI Systray — server address";
+            Text = "Open WebUI Systray - server address";
             FormBorderStyle = FormBorderStyle.FixedDialog;
             StartPosition = FormStartPosition.CenterScreen;
             MaximizeBox = false;

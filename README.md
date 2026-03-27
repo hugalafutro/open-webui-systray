@@ -47,17 +47,17 @@ Only **https://** URLs with a host are accepted.
 
 ## Behavior
 
-- **Single instance** — starting a second copy exits immediately.
-- **Tray icon** — left-click shows or focuses the browser window; **Quit** is in the tray context menu.
-- **Close button** — hides the window to the tray (does not exit the app).
-- **WebView2 user data** — stored under `WebView2Data\` beside the executable (cookies, cache, etc.).
+- **Single instance** - starting a second copy exits immediately.
+- **Tray icon** - left-click shows or focuses the browser window; **Quit** is in the tray context menu.
+- **Close button** - hides the window to the tray (does not exit the app).
+- **WebView2 user data** - stored under `WebView2Data\` beside the executable (cookies, cache, etc.).
 
 ## Project layout
 
-- `open-webui-systray.csproj` — .NET 8 WinExe project
-- `Program.cs`, `Startup.cs`, `AppConfig.cs` — entry, URL resolution, config
-- `TrayApplicationContext.cs` — tray icon and menu
-- `MainForm.cs` — WebView2 host window
+- `open-webui-systray.csproj` - .NET 8 WinExe project
+- `Program.cs`, `Startup.cs`, `AppConfig.cs` - entry, URL resolution, config
+- `TrayApplicationContext.cs` - tray icon and menu
+- `MainForm.cs` - WebView2 host window
 
 ## License
 
