@@ -49,3 +49,6 @@ Desktop.ini
 
 # Windows shortcuts (absolute paths; keep local only)
 *.lnk
+
+# Personal Startup-folder installer (local only)
+install-startup-shortcut.ps1
