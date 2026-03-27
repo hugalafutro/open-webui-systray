@@ -10,7 +10,9 @@ sealed class MainForm : Form
     {
         Text = "open-webui-desktop";
         Size = new System.Drawing.Size(1280, 800);
-        StartPosition = FormStartPosition.CenterScreen;
+        StartPosition = FormStartPosition.Manual;
+        var wa = (Screen.PrimaryScreen ?? Screen.AllScreens[0]).WorkingArea;
+        Location = new System.Drawing.Point(wa.Right - Width, wa.Bottom - Height);
 
         _webView = new WebView2 { Dock = DockStyle.Fill };
         Controls.Add(_webView);

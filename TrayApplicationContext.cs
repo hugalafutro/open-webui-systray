@@ -56,7 +56,7 @@ sealed class TrayApplicationContext : ApplicationContext
         using (var brush = new SolidBrush(Color.White))
             g.FillPath(brush, path);
 
-        using var font = new Font("Segoe UI", 10f, FontStyle.Bold, GraphicsUnit.Pixel);
+        using var font = new Font("Segoe UI", 14f, FontStyle.Bold, GraphicsUnit.Pixel);
         const string text = "OI";
         var textSize = g.MeasureString(text, font);
         float x = (size - textSize.Width) / 2f;
