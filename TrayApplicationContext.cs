@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
+using System.Runtime.InteropServices;
 
 namespace OpenWebUiSystray;
 
@@ -67,8 +68,15 @@ sealed class TrayApplicationContext : ApplicationContext
         using (var brush = new SolidBrush(Color.FromArgb(30, 30, 30)))
             g.DrawString(text, font, brush, x, y);
 
-        return System.Drawing.Icon.FromHandle(bmp.GetHicon());
+        var hIcon = bmp.GetHicon();
+        using var temp = Icon.FromHandle(hIcon);
+        var icon = (Icon)temp.Clone();
+        DestroyIcon(hIcon);
+        return icon;
     }
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+    private static extern bool DestroyIcon(IntPtr handle);
 
     private static GraphicsPath RoundedRect(Rectangle bounds, int radius)
     {
