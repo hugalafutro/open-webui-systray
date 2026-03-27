@@ -6,16 +6,8 @@ static class Startup
     {
         startUrl = "";
 
-        if (AppConfig.TryLoad(out startUrl))
+        if (AppConfig.TryLoad(out startUrl, out var initial))
             return true;
-
-        string? initial = null;
-        if (File.Exists(AppConfig.ConfigPath))
-        {
-            initial = File.ReadAllLines(AppConfig.ConfigPath)
-                .Select(static l => l.Trim())
-                .FirstOrDefault(static l => l.Length > 0 && !l.StartsWith('#'));
-        }
 
         if (!AppConfig.ShowUrlSetupDialog(owner: null, initial, out startUrl))
             return false;

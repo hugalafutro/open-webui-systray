@@ -6,9 +6,10 @@ static class AppConfig
 
     internal static string ConfigPath => Path.Combine(AppContext.BaseDirectory, FileName);
 
-    internal static bool TryLoad(out string url)
+    internal static bool TryLoad(out string url, out string? initialForSetupDialog)
     {
         url = "";
+        initialForSetupDialog = null;
         if (!File.Exists(ConfigPath))
             return false;
 
@@ -22,6 +23,8 @@ static class AppConfig
                 url = normalized;
                 return true;
             }
+
+            initialForSetupDialog = line;
             return false;
         }
 
