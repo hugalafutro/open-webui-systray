@@ -36,6 +36,7 @@ sealed class MainForm : Form
                 userDataFolder: dataDir);
 
             await _webView.EnsureCoreWebView2Async(env);
+            _webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
             _webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
             _webView.ZoomFactor = 0.9;
 
