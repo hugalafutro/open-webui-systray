@@ -29,14 +29,27 @@ sealed class MainForm : Form
     {
         base.OnLoad(e);
 
-        var dataDir = Path.Combine(AppContext.BaseDirectory, "WebView2Data");
-        var env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(
-            userDataFolder: dataDir);
+        try
+        {
+            var dataDir = Path.Combine(AppContext.BaseDirectory, "WebView2Data");
+            var env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(
+                userDataFolder: dataDir);
 
-        await _webView.EnsureCoreWebView2Async(env);
-        _webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
-        _webView.ZoomFactor = 0.9;
-        _webView.CoreWebView2.Navigate(_startUrl);
+            await _webView.EnsureCoreWebView2Async(env);
+            _webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
+            _webView.ZoomFactor = 0.9;
+            _webView.CoreWebView2.Navigate(_startUrl);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                this,
+                $"Could not start the embedded browser (WebView2).\n\n{ex.Message}",
+                Text,
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+            Application.Exit();
+        }
     }
 
     protected override void OnFormClosing(FormClosingEventArgs e)
