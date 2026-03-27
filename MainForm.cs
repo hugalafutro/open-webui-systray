@@ -38,6 +38,15 @@ sealed class MainForm : Form
             await _webView.EnsureCoreWebView2Async(env);
             _webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
             _webView.ZoomFactor = 0.9;
+
+            var startUri = new Uri(_startUrl);
+            var allowedHost = startUri.Host;
+            _webView.CoreWebView2.NavigationStarting += (_, args) =>
+            {
+                if (!IsNavigationAllowed(args.Uri, allowedHost))
+                    args.Cancel = true;
+            };
+
             _webView.CoreWebView2.Navigate(_startUrl);
         }
         catch (Exception ex)
@@ -61,5 +70,32 @@ sealed class MainForm : Form
             return;
         }
         base.OnFormClosing(e);
+    }
+
+    private static bool IsNavigationAllowed(string uriString, string allowedHost)
+    {
+        if (string.IsNullOrEmpty(uriString))
+            return true;
+
+        if (uriString.StartsWith("#", StringComparison.Ordinal))
+            return true;
+
+        if (!Uri.TryCreate(uriString, UriKind.Absolute, out var uri))
+            return false;
+
+        if (string.Equals(uri.Scheme, "about", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (string.Equals(uri.Scheme, "data", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (string.Equals(uri.Scheme, "blob", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase))
+            return string.Equals(uri.Host, allowedHost, StringComparison.OrdinalIgnoreCase);
+
+        return false;
     }
 }
