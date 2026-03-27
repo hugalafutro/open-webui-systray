@@ -64,6 +64,7 @@ class MainWindow(QMainWindow):
         self._start_url = start_url
         self._force_quit = False
         self._page: RestrictedWebEnginePage | None = None
+        self._profile: QWebEngineProfile | None = None
         self._tray = tray
 
         self.setWindowTitle("Open WebUI Systray")
@@ -78,11 +79,16 @@ class MainWindow(QMainWindow):
             raise ValueError("Start URL must include a host.")
 
         storage_root = data_dir()
-        # defaultProfile() avoids PyQt/QtWebEngine destroying a custom profile before the page
-        # (see Qt warning "Release of profile requested but WebEnginePage still not deleted").
-        profile = QWebEngineProfile.defaultProfile()
+        # defaultProfile() is off-the-record with NoPersistentCookies, so logins never persist.
+        # A named profile is on-disk; keep a Python reference so the profile is not finalized
+        # before the page is torn down (Qt warning about profile released while page exists).
+        profile = QWebEngineProfile("open-webui-systray")
         profile.setPersistentStoragePath(str(storage_root / "qtwebengine"))
         profile.setCachePath(str(storage_root / "qtwebengine-cache"))
+        profile.setPersistentCookiesPolicy(
+            QWebEngineProfile.PersistentCookiesPolicy.AllowPersistentCookies
+        )
+        self._profile = profile
 
         self._web_view = QWebEngineView(self)
         self._page = RestrictedWebEnginePage(allowed_host, profile, self._web_view)

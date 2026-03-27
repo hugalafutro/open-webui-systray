@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QAction, QColor, QFont, QIcon, QPainter, QPainterPath, QPixmap
 from PyQt6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon
 
@@ -98,9 +98,16 @@ class TrayManager:
         self._main.activateWindow()
 
     def _quit(self) -> None:
+        self._tray.hide()
         if self._main is not None:
             self._main.prepare_force_quit()
             self._main.close()
-            self._main = None
-        self._tray.hide()
+            # Defer dropping the window so WebEngine teardown is not synchronous with the menu slot
+            # (reduces native crashes on exit with Qt WebEngine / GPU stacks).
+            QTimer.singleShot(0, self._finish_quit_after_close)
+            return
+        QApplication.quit()
+
+    def _finish_quit_after_close(self) -> None:
+        self._main = None
         QApplication.quit()

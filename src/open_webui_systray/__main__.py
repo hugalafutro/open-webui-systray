@@ -2,8 +2,30 @@
 
 from __future__ import annotations
 
-import fcntl
 import os
+
+
+def _disable_mangohud_for_app() -> None:
+    # MangoHud's Vulkan implicit layer enables when MANGOHUD=1; DISABLE_MANGOHUD=1 turns it off
+    # (see /usr/share/vulkan/implicit_layer.d/MangoHud*.json). Also drop the shim from LD_PRELOAD
+    # when a gaming profile preloads it.
+    os.environ["DISABLE_MANGOHUD"] = "1"
+    preload = os.environ.get("LD_PRELOAD", "")
+    if not preload:
+        return
+    orig = [p for p in preload.split(":") if p]
+    kept = [p for p in orig if "mangohud" not in p.lower()]
+    if len(kept) == len(orig):
+        return
+    if kept:
+        os.environ["LD_PRELOAD"] = ":".join(kept)
+    else:
+        del os.environ["LD_PRELOAD"]
+
+
+_disable_mangohud_for_app()
+
+import fcntl
 import sys
 import tempfile
 from pathlib import Path
@@ -57,12 +79,19 @@ def try_resolve_start_url() -> str | None:
     return dlg.accepted_url
 
 
+def _prefer_xcb_on_wayland() -> None:
+    # Match run.sh: Wayland often ignores window.move(); XWayland honors tray-adjacent placement.
+    if os.environ.get("WAYLAND_DISPLAY") and not os.environ.get("QT_QPA_PLATFORM"):
+        os.environ["QT_QPA_PLATFORM"] = "xcb"
+
+
 def main() -> int:
     lock_fp = acquire_single_instance_lock()
     if lock_fp is None:
         return 0
 
     try:
+        _prefer_xcb_on_wayland()
         app = QApplication(sys.argv)
         app.setQuitOnLastWindowClosed(False)
         app.setApplicationName("Open WebUI Systray")
