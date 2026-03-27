@@ -27,6 +27,8 @@ sealed class MainForm : Form
             userDataFolder: dataDir);
 
         await _webView.EnsureCoreWebView2Async(env);
+        _webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
+        _webView.ZoomFactor = 0.9;
         _webView.CoreWebView2.Navigate("https://ai.zmrd.uk");
     }
 
