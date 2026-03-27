@@ -96,7 +96,8 @@ sealed class TrayApplicationContext : ApplicationContext
         {
             _trayIcon.Visible = false;
             _trayIcon.Dispose();
-            _mainForm?.Close();
+            if (_mainForm is { IsDisposed: false })
+                _mainForm.Close();
             _mainForm?.Dispose();
         }
         base.Dispose(disposing);
