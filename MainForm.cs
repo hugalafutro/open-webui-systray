@@ -13,8 +13,13 @@ sealed class MainForm : Form
         StartPosition = FormStartPosition.Manual;
         var wa = (Screen.PrimaryScreen ?? Screen.AllScreens[0]).WorkingArea;
         Location = new System.Drawing.Point(wa.Right - Width, wa.Bottom - Height);
+        BackColor = Color.Black;
 
-        _webView = new WebView2 { Dock = DockStyle.Fill };
+        _webView = new WebView2
+        {
+            Dock = DockStyle.Fill,
+            DefaultBackgroundColor = Color.Black,
+        };
         Controls.Add(_webView);
     }
 
