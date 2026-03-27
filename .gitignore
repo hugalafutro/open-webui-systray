@@ -13,8 +13,15 @@ dist/
 # WebView2 profile (cookies, cache, sessions)
 WebView2Data/
 
+# Cursor (local project cache, MCP descriptors, workspace metadata — not app source)
+.cursor/
+
+# VS Code / Cursor multi-root workspace files (often machine-specific paths)
+*.code-workspace
+
 # Visual Studio / VS Code
 .vs/
+.vscode/
 *.rsuser
 *.suo
 *.user
