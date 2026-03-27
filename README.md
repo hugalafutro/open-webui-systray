@@ -8,6 +8,8 @@ Small **Linux / KDE Plasma 6** system tray application that opens an **[Open Web
 
 > **Branch `kde6-rewrite`:** Python + PyQt6 + QtWebEngine. The `main` branch may still contain the older Windows (.NET / WinForms / WebView2) implementation.
 
+![Open WebUI Systray](screenshot.png)
+
 ## Requirements
 
 - **Linux** with a working **system tray** / StatusNotifier (e.g. KDE Plasma 6)
