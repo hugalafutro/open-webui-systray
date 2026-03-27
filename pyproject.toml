@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "open-webui-systray"
+version = "1.0.0"
+description = "System tray app that opens Open WebUI (HTTPS) in an embedded Qt WebEngine window (KDE/Linux)."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+    "PyQt6>=6.6.0",
+    "PyQt6-WebEngine>=6.6.0",
+]
+
+[project.scripts]
+open-webui-systray = "open_webui_systray.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

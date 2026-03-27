@@ -1,38 +1,46 @@
-# Build outputs (Debug, Release, publish - all .exe/.dll land here, not in git)
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+*.egg-info/
+src/*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+pip-wheel-metadata/
+
+# Build outputs (legacy .NET — harmless if present)
 [Bb]in/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
-
-# Local publish folders if you ever publish outside bin/
 publish/
 [Pp]ublishOutput/
 out/
-dist/
 
-# WebView2 profile (cookies, cache, sessions)
+# WebView2 profile (legacy Windows)
 WebView2Data/
 
-# Cursor (local project cache, MCP descriptors, workspace metadata - not app source)
+# Cursor (local project cache)
 .cursor/
 
-# VS Code / Cursor multi-root workspace files (often machine-specific paths)
+# VS Code / Cursor workspace
 *.code-workspace
-
-# Visual Studio / VS Code
 .vs/
 .vscode/
-*.rsuser
-*.suo
-*.user
-*.userosscache
-*.sln.docstates
 
-# JetBrains Rider
+# JetBrains
 .idea/
 *.sln.iml
 
-# NuGet
+# NuGet (legacy)
 *.nupkg
 **/[Pp]ackages/*
 !**/[Pp]ackages/build/
@@ -46,9 +54,7 @@ WebView2Data/
 Thumbs.db
 Desktop.ini
 .DS_Store
-
-# Windows shortcuts (absolute paths; keep local only)
 *.lnk
 
-# Personal Startup-folder installer (local only)
+# Local-only scripts
 install-startup-shortcut.ps1

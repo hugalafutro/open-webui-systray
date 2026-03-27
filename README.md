@@ -4,63 +4,66 @@
 
 # Open WebUI Systray
 
-![Screenshot of Open WebUI Systray](screenshot.png)
+Small **Linux / KDE Plasma 6** system tray application that opens an **[Open WebUI](https://github.com/open-webui/open-webui)** (or any **HTTPS**) instance inside an embedded **Qt WebEngine** (Chromium) window. Run it, park it in the tray, and show or hide the window from the icon.
 
-Small **Windows** tray application that opens an **[Open WebUI](https://github.com/open-webui/open-webui)** (or any **HTTPS**) instance inside an embedded **WebView2** browser. Run it, park it in the system tray, and show or hide the window from the icon.
+> **Branch `kde6-rewrite`:** Python + PyQt6 + QtWebEngine. The `main` branch may still contain the older Windows (.NET / WinForms / WebView2) implementation.
 
 ## Requirements
 
-- **Windows** (WinForms + WebView2)
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- **Linux** with a working **system tray** / StatusNotifier (e.g. KDE Plasma 6)
+- **Python 3.10+**
+- **PyQt6** and **PyQt6-WebEngine** (Chromium-based; distro packages or `pip`)
 
-## Build
+Plasma may need `libxcb-cursor0` (or your distro’s equivalent) for some Qt features.
+
+## Install (virtual environment)
 
 From the repository root:
 
-```powershell
-.\build-release.ps1
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
 ```
-
-Or manually:
-
-```powershell
-dotnet build .\open-webui-systray.csproj -c Release
-```
-
-The executable is produced under `bin\Release\net8.0-windows\` (e.g. `open-webui-systray.exe`).
 
 ## Run
 
-After a Release build:
+After install:
 
-```powershell
-.\run-release.ps1
+```bash
+open-webui-systray
 ```
 
-That starts the newest `.exe` in the Release output folder with the correct working directory (so config and WebView2 data resolve next to the binary).
+Or without installing (dev):
+
+```bash
+chmod +x run.sh
+./run.sh
+```
 
 ## Configuration
 
 On first run (or if no valid config exists), a dialog asks for the **HTTPS URL** of your server (for example your Open WebUI URL).
 
-Settings are stored next to the executable in **`open-webui-systray.cfg`**: one non-comment line with the HTTPS URL. Lines starting with `#` are ignored.
+Settings are stored under **`$XDG_CONFIG_HOME/open-webui-systray/open-webui-systray.cfg`** (usually `~/.config/open-webui-systray/open-webui-systray.cfg`): one non-comment line with the HTTPS URL. Lines starting with `#` are ignored.
 
 Only **https://** URLs with a host are accepted.
 
+**Qt WebEngine profile** (cookies, cache, etc.) lives under **`$XDG_DATA_HOME/open-webui-systray/`** (typically `~/.local/share/open-webui-systray/`).
+
 ## Behavior
 
-- **Single instance** - starting a second copy exits immediately.
-- **Tray icon** - left-click shows or focuses the browser window; **Quit** is in the tray context menu.
-- **Close button** - hides the window to the tray (does not exit the app).
-- **WebView2 user data** - stored under `WebView2Data\` beside the executable (cookies, cache, etc.).
+- **Single instance** — a second copy exits immediately (lock file under `$XDG_RUNTIME_DIR` or a temp fallback).
+- **Tray icon** — left-click shows or focuses the browser window; **Quit** is in the tray context menu.
+- **Close button** — hides the window to the tray (does not exit the app).
+- **Same-host navigation** — the embedded browser only allows navigations on the host of the configured URL (plus `about:`, `data:`, `blob:`, and fragment-only URLs), matching the previous WebView2 behavior.
 
 ## Project layout
 
-- `open-webui-systray.csproj` - .NET 8 WinExe project
-- `Program.cs`, `Startup.cs`, `AppConfig.cs` - entry, URL resolution, config
-- `TrayApplicationContext.cs` - tray icon and menu
-- `MainForm.cs` - WebView2 host window
+- `pyproject.toml` — Python package metadata and dependencies
+- `run.sh` — run from a clone without `pip install`
+- `src/open_webui_systray/` — application code (`__main__.py`, config, dialog, tray, main window)
 
 ## License
 
-This project is released under the [MIT License](LICENSE). You may use, copy, modify, and distribute it subject to that license. The embedded [WebView2](https://developer.microsoft.com/microsoft-edge/webview2/) runtime is subject to Microsoft’s terms.
+This project is released under the [MIT License](LICENSE). Qt and Qt WebEngine are subject to their respective licenses (LGPL/GPL and Chromium components as shipped by the Qt Company / your distribution).
