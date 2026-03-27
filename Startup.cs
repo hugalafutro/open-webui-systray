@@ -10,9 +10,9 @@ static class Startup
             return true;
 
         string? initial = null;
-        if (AppConfig.ExistingConfigFilePath is { } cfgPath)
+        if (File.Exists(AppConfig.ConfigPath))
         {
-            initial = File.ReadAllLines(cfgPath)
+            initial = File.ReadAllLines(AppConfig.ConfigPath)
                 .Select(static l => l.Trim())
                 .FirstOrDefault(static l => l.Length > 0 && !l.StartsWith('#'));
         }

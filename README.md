@@ -41,12 +41,7 @@ That starts the newest `.exe` in the Release output folder with the correct work
 
 On first run (or if no valid config exists), a dialog asks for the **HTTPS URL** of your server (for example your Open WebUI URL).
 
-Settings are stored next to the executable:
-
-| File | Purpose |
-|------|--------|
-| `open-webui-systray.cfg` | Active config: one non-comment line with the HTTPS URL. Lines starting with `#` are ignored. |
-| `web-systray.cfg` | Legacy name; still **read** if the new file is missing. Saving always writes `open-webui-systray.cfg`. |
+Settings are stored next to the executable in **`open-webui-systray.cfg`**: one non-comment line with the HTTPS URL. Lines starting with `#` are ignored.
 
 Only **https://** URLs with a host are accepted.
 

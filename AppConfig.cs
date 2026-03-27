@@ -3,23 +3,16 @@ namespace OpenWebUiSystray;
 static class AppConfig
 {
     internal const string FileName = "open-webui-systray.cfg";
-    private const string LegacyFileName = "web-systray.cfg";
 
     internal static string ConfigPath => Path.Combine(AppContext.BaseDirectory, FileName);
-
-    private static string LegacyConfigPath => Path.Combine(AppContext.BaseDirectory, LegacyFileName);
-
-    internal static string? ExistingConfigFilePath =>
-        File.Exists(ConfigPath) ? ConfigPath : File.Exists(LegacyConfigPath) ? LegacyConfigPath : null;
 
     internal static bool TryLoad(out string url)
     {
         url = "";
-        var path = File.Exists(ConfigPath) ? ConfigPath : LegacyConfigPath;
-        if (!File.Exists(path))
+        if (!File.Exists(ConfigPath))
             return false;
 
-        foreach (var raw in File.ReadAllLines(path))
+        foreach (var raw in File.ReadAllLines(ConfigPath))
         {
             var line = raw.Trim();
             if (line.Length == 0 || line.StartsWith('#'))
