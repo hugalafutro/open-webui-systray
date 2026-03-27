@@ -1,5 +1,7 @@
 > **Note:** This project was created with the help of **AI** using [**Cursor**](https://cursor.com/). Human judgment still applies; the disclosure is here for anyone who wants to know how the code came together.
 
+> *Third-party:* This is an independent tool and is not officially affiliated with the [Open WebUI](https://github.com/open-webui/open-webui) project.
+
 # Open WebUI Systray
 
 ![Screenshot of Open WebUI Systray](screenshot.png)
