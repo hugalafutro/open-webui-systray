@@ -5,9 +5,11 @@ namespace WebSystray;
 sealed class MainForm : Form
 {
     private readonly WebView2 _webView;
+    private readonly string _startUrl;
 
-    public MainForm()
+    public MainForm(string startUrl)
     {
+        _startUrl = startUrl;
         Text = "open-webui-desktop";
         Size = new System.Drawing.Size(1280, 800);
         StartPosition = FormStartPosition.Manual;
@@ -34,7 +36,7 @@ sealed class MainForm : Form
         await _webView.EnsureCoreWebView2Async(env);
         _webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
         _webView.ZoomFactor = 0.9;
-        _webView.CoreWebView2.Navigate("https://ai.zmrd.uk");
+        _webView.CoreWebView2.Navigate(_startUrl);
     }
 
     protected override void OnFormClosing(FormClosingEventArgs e)

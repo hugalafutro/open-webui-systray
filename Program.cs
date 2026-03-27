@@ -12,6 +12,10 @@ static class Program
             return;
 
         ApplicationConfiguration.Initialize();
-        Application.Run(new TrayApplicationContext());
+
+        if (!Startup.TryResolveStartUrl(out var startUrl))
+            return;
+
+        Application.Run(new TrayApplicationContext(startUrl));
     }
 }

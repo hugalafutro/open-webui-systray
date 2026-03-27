@@ -7,10 +7,13 @@ namespace WebSystray;
 sealed class TrayApplicationContext : ApplicationContext
 {
     private readonly NotifyIcon _trayIcon;
+    private readonly string _startUrl;
     private MainForm? _mainForm;
 
-    public TrayApplicationContext()
+    public TrayApplicationContext(string startUrl)
     {
+        _startUrl = startUrl;
+
         var quitItem = new ToolStripMenuItem("Quit", null, (_, _) => Application.Exit());
         var contextMenu = new ContextMenuStrip();
         contextMenu.Items.Add(quitItem);
@@ -32,7 +35,7 @@ sealed class TrayApplicationContext : ApplicationContext
 
         if (_mainForm == null || _mainForm.IsDisposed)
         {
-            _mainForm = new MainForm { Icon = _trayIcon.Icon };
+            _mainForm = new MainForm(_startUrl) { Icon = _trayIcon.Icon };
         }
 
         _mainForm.Show();
