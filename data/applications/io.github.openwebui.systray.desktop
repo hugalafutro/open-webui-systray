@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Open WebUI Systray
+Comment=Open WebUI (HTTPS) in a tray-hosted Qt WebEngine window
+Icon=io.github.openwebui.systray
+Exec=open-webui-systray
+TryExec=open-webui-systray
+Terminal=false
+Categories=Network;Utility;
+Keywords=OpenWebUI;WebUI;AI;HTTPS;tray;
+StartupWMClass=Open-webui-systray

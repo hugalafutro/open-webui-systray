@@ -19,3 +19,8 @@ open-webui-systray = "open_webui_systray.__main__:main"
 
 [tool.setuptools.packages]
 find = { where = ["src"] }
+
+[tool.setuptools.data-files]
+"share/applications" = ["data/applications/io.github.openwebui.systray.desktop"]
+"share/icons/hicolor/32x32/apps" = ["data/icons/hicolor/32x32/apps/io.github.openwebui.systray.png"]
+"share/icons/hicolor/128x128/apps" = ["data/icons/hicolor/128x128/apps/io.github.openwebui.systray.png"]

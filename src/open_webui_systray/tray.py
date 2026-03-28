@@ -2,43 +2,17 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QAction, QColor, QFont, QIcon, QPainter, QPainterPath, QPixmap
+from PyQt6.QtCore import QTimer
+from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon
 
+from open_webui_systray.icon_brand import brand_pixmap
 from open_webui_systray.mainwindow import MainWindow
 
 
 def generate_tray_icon() -> QIcon:
     """32x32 'OI' on white rounded rectangle (parity with WinForms app)."""
-    size = 32
-    pm = QPixmap(size, size)
-    pm.fill(Qt.GlobalColor.transparent)
-
-    painter = QPainter(pm)
-    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-    painter.setRenderHint(QPainter.RenderHint.TextAntialiasing)
-
-    rect_path = QPainterPath()
-    rect_path.addRoundedRect(2, 2, size - 4, size - 4, 6, 6)
-    painter.fillPath(rect_path, QColor(255, 255, 255))
-
-    font = QFont()
-    font.setPixelSize(14)
-    font.setBold(True)
-    font.setFamilies(["Segoe UI", "Noto Sans", "Sans Serif"])
-    painter.setFont(font)
-    painter.setPen(QColor(30, 30, 30))
-    painter.drawText(
-        2,
-        2,
-        size - 4,
-        size - 4,
-        Qt.AlignmentFlag.AlignCenter,
-        "OI",
-    )
-    painter.end()
-    return QIcon(pm)
+    return QIcon(brand_pixmap(32))
 
 
 class TrayManager:

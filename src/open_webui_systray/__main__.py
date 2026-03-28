@@ -94,7 +94,10 @@ def main() -> int:
         _prefer_xcb_on_wayland()
         app = QApplication(sys.argv)
         app.setQuitOnLastWindowClosed(False)
-        app.setApplicationName("Open WebUI Systray")
+        # Stable WM_CLASS / app id for Plasma taskbar (see data/applications/*.desktop StartupWMClass).
+        app.setApplicationName("open-webui-systray")
+        app.setApplicationDisplayName("Open WebUI Systray")
+        app.setDesktopFileName("io.github.openwebui.systray")
 
         if not QSystemTrayIcon.isSystemTrayAvailable():
             QMessageBox.critical(

@@ -61,6 +61,8 @@ Only **https://** URLs with a host are accepted.
 ## Project layout
 
 - `pyproject.toml` - Python package metadata and dependencies
+- `data/` - packager metadata (`.desktop` entry, icons)
+- `scripts/render_app_icons.py` - optional: regenerate theme PNGs when changing the in-app icon
 - `run.sh` - run from a clone without `pip install`
 - `src/open_webui_systray/` - application code (`__main__.py`, config, dialog, tray, main window)
 
