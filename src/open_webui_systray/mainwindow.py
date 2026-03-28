@@ -7,13 +7,20 @@ from urllib.parse import urlparse
 
 from PyQt6.QtCore import QTimer, QUrl, Qt
 from PyQt6.QtGui import QColor, QCloseEvent, QGuiApplication, QIcon, QShowEvent
-from PyQt6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineSettings
+from PyQt6.QtWebEngineCore import (
+    QWebEngineLoadingInfo,
+    QWebEnginePage,
+    QWebEngineProfile,
+    QWebEngineSettings,
+)
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWidgets import QApplication, QMainWindow, QMessageBox, QSystemTrayIcon
 
 from open_webui_systray.config import data_dir
 
 _EDGE_MARGIN = 8
+_MAX_LOAD_RETRIES = 30
+_RELOAD_DELAY_MS = 5000
 
 
 def _is_navigation_allowed(uri_string: str, allowed_host: str) -> bool:
@@ -66,6 +73,10 @@ class MainWindow(QMainWindow):
         self._page: RestrictedWebEnginePage | None = None
         self._profile: QWebEngineProfile | None = None
         self._tray = tray
+        self._retry_count = 0
+        self._retry_timer = QTimer(self)
+        self._retry_timer.setSingleShot(True)
+        self._retry_timer.timeout.connect(self._reload_start_url)
 
         self.setWindowTitle("Open WebUI Systray")
         self.resize(1280, 800)
@@ -101,7 +112,35 @@ class MainWindow(QMainWindow):
         self._web_view.setZoomFactor(0.9)
         self.setCentralWidget(self._web_view)
 
+        self._page.loadingChanged.connect(self._on_loading_changed)
         self._web_view.load(QUrl(start_url))
+
+    def _reload_start_url(self) -> None:
+        if self._force_quit or self._web_view is None:
+            return
+        self._web_view.load(QUrl(self._start_url))
+
+    def _on_loading_changed(self, info: QWebEngineLoadingInfo) -> None:
+        st = info.status()
+        if st == QWebEngineLoadingInfo.LoadStatus.LoadStartedStatus:
+            return
+        if st == QWebEngineLoadingInfo.LoadStatus.LoadStoppedStatus:
+            return
+
+        http_5xx = (
+            info.errorDomain() == QWebEngineLoadingInfo.ErrorDomain.HttpStatusCodeDomain
+            and info.errorCode() >= 500
+        )
+        if st == QWebEngineLoadingInfo.LoadStatus.LoadFailedStatus or http_5xx:
+            if self._retry_count < _MAX_LOAD_RETRIES:
+                self._retry_count += 1
+                self._retry_timer.stop()
+                self._retry_timer.start(_RELOAD_DELAY_MS)
+            return
+
+        if st == QWebEngineLoadingInfo.LoadStatus.LoadSucceededStatus:
+            self._retry_count = 0
+            self._retry_timer.stop()
 
     def position_near_tray(self, tray: QSystemTrayIcon) -> None:
         """Place top-right or bottom-right of the work area from tray geometry, else platform fallback."""
@@ -151,6 +190,7 @@ class MainWindow(QMainWindow):
             self.position_near_tray(self._tray)
 
     def prepare_force_quit(self) -> None:
+        self._retry_timer.stop()
         self._force_quit = True
 
     def closeEvent(self, event: QCloseEvent) -> None:
