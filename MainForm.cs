@@ -6,6 +6,9 @@ sealed class MainForm : Form
 {
     private readonly WebView2 _webView;
     private readonly string _startUrl;
+    private int _navRetries;
+    private const int MaxNavRetries = 30;
+    private const int RetryDelayMs = 5_000;
 
     public MainForm(string startUrl)
     {
@@ -48,6 +51,8 @@ sealed class MainForm : Form
                     args.Cancel = true;
             };
 
+            _webView.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
+
             _webView.CoreWebView2.Navigate(_startUrl);
         }
         catch (Exception ex)
@@ -71,6 +76,23 @@ sealed class MainForm : Form
             return;
         }
         base.OnFormClosing(e);
+    }
+
+    private async void OnNavigationCompleted(object? sender,
+        Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs args)
+    {
+        bool shouldRetry = !args.IsSuccess || args.HttpStatusCode >= 500;
+        if (shouldRetry && _navRetries < MaxNavRetries)
+        {
+            _navRetries++;
+            _webView.CoreWebView2.NavigateToString("");
+            await Task.Delay(RetryDelayMs);
+            _webView.CoreWebView2.Navigate(_startUrl);
+            return;
+        }
+
+        if (args.IsSuccess && args.HttpStatusCode < 400)
+            _navRetries = 0;
     }
 
     private static bool IsNavigationAllowed(string uriString, string allowedHost)
