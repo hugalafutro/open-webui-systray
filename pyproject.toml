@@ -17,5 +17,5 @@ dependencies = [
 [project.scripts]
 open-webui-systray = "open_webui_systray.__main__:main"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.setuptools.packages]
+find = { where = ["src"] }
