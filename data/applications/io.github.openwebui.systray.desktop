@@ -8,4 +8,4 @@ TryExec=open-webui-systray
 Terminal=false
 Categories=Network;Utility;
 Keywords=OpenWebUI;WebUI;AI;HTTPS;tray;
-StartupWMClass=Open-webui-systray
+StartupWMClass=open-webui-systray

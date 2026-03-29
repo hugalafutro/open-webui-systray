@@ -94,7 +94,7 @@ def main() -> int:
         _prefer_xcb_on_wayland()
         app = QApplication(sys.argv)
         app.setQuitOnLastWindowClosed(False)
-        # Stable WM_CLASS / app id for Plasma taskbar (see data/applications/*.desktop StartupWMClass).
+        # WM_CLASS follows applicationName; *.desktop StartupWMClass must match (case-sensitive) for Plasma.
         app.setApplicationName("open-webui-systray")
         app.setApplicationDisplayName("Open WebUI Systray")
         app.setDesktopFileName("io.github.openwebui.systray")
