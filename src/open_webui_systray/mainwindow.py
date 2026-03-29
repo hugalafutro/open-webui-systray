@@ -6,7 +6,7 @@ import sys
 from urllib.parse import urlparse
 
 from PyQt6.QtCore import QTimer, QUrl, Qt
-from PyQt6.QtGui import QColor, QCloseEvent, QGuiApplication, QIcon, QShowEvent
+from PyQt6.QtGui import QColor, QCloseEvent, QGuiApplication, QHideEvent, QIcon, QShowEvent
 from PyQt6.QtWebEngineCore import (
     QWebEngineLoadingInfo,
     QWebEnginePage,
@@ -77,6 +77,8 @@ class MainWindow(QMainWindow):
         self._retry_timer = QTimer(self)
         self._retry_timer.setSingleShot(True)
         self._retry_timer.timeout.connect(self._reload_start_url)
+        self._was_hidden_for_tray = False
+        self._reload_when_shown = False
 
         self.setWindowTitle("Open WebUI Systray")
         self.resize(1280, 800)
@@ -118,6 +120,9 @@ class MainWindow(QMainWindow):
     def _reload_start_url(self) -> None:
         if self._force_quit or self._web_view is None:
             return
+        if not self.isVisible():
+            self._reload_when_shown = True
+            return
         self._web_view.load(QUrl(self._start_url))
 
     def _on_loading_changed(self, info: QWebEngineLoadingInfo) -> None:
@@ -132,6 +137,9 @@ class MainWindow(QMainWindow):
             and info.errorCode() >= 500
         )
         if st == QWebEngineLoadingInfo.LoadStatus.LoadFailedStatus or http_5xx:
+            if not self.isVisible():
+                self._reload_when_shown = True
+                return
             if self._retry_count < _MAX_LOAD_RETRIES:
                 self._retry_count += 1
                 self._retry_timer.stop()
@@ -140,6 +148,7 @@ class MainWindow(QMainWindow):
 
         if st == QWebEngineLoadingInfo.LoadStatus.LoadSucceededStatus:
             self._retry_count = 0
+            self._reload_when_shown = False
             self._retry_timer.stop()
 
     def position_near_tray(self, tray: QSystemTrayIcon) -> None:
@@ -178,8 +187,21 @@ class MainWindow(QMainWindow):
         y = max(wa.top(), min(y, wa.bottom() - h))
         self.move(x, y)
 
+    def hideEvent(self, event: QHideEvent) -> None:
+        self._retry_timer.stop()
+        self._was_hidden_for_tray = True
+        super().hideEvent(event)
+
     def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
+        if self._was_hidden_for_tray:
+            self._was_hidden_for_tray = False
+            need_reload = self._reload_when_shown or self._retry_count >= _MAX_LOAD_RETRIES
+            self._retry_count = 0
+            self._retry_timer.stop()
+            self._reload_when_shown = False
+            if need_reload and not self._force_quit and self._web_view is not None:
+                self._web_view.load(QUrl(self._start_url))
         if self._tray is not None:
             self.position_near_tray(self._tray)
             QTimer.singleShot(0, self._deferred_position_after_show)
