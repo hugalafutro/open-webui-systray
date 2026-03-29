@@ -1,14 +1,28 @@
+using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 
 namespace OpenWebUiSystray;
 
 sealed class MainForm : Form
 {
+    private enum PendingNavKind
+    {
+        Unknown,
+        Main,
+        BlankClear,
+    }
+
     private readonly WebView2 _webView;
     private readonly string _startUrl;
     private int _navRetries;
+    private PendingNavKind _pendingNavKind;
+    private bool _retryDueWhenVisible;
+    private bool _webViewInitialized;
+    private DateTime? _lastHiddenUtc;
+
     private const int MaxNavRetries = 30;
     private const int RetryDelayMs = 5_000;
+    private const int ShowRefreshAfterHideMinutes = 10;
 
     public MainForm(string startUrl)
     {
@@ -35,7 +49,7 @@ sealed class MainForm : Form
         try
         {
             var dataDir = Path.Combine(AppContext.BaseDirectory, "WebView2Data");
-            var env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(
+            var env = await CoreWebView2Environment.CreateAsync(
                 userDataFolder: dataDir);
 
             await _webView.EnsureCoreWebView2Async(env);
@@ -53,7 +67,8 @@ sealed class MainForm : Form
 
             _webView.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
 
-            _webView.CoreWebView2.Navigate(_startUrl);
+            _webViewInitialized = true;
+            NavigateMain();
         }
         catch (Exception ex)
         {
@@ -64,6 +79,37 @@ sealed class MainForm : Form
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
             Application.Exit();
+        }
+    }
+
+    protected override void OnVisibleChanged(EventArgs e)
+    {
+        base.OnVisibleChanged(e);
+
+        if (!Visible)
+        {
+            if (_webViewInitialized)
+                _lastHiddenUtc = DateTime.UtcNow;
+            return;
+        }
+
+        if (!_webViewInitialized || _webView.CoreWebView2 == null)
+            return;
+
+        if (_retryDueWhenVisible)
+        {
+            _retryDueWhenVisible = false;
+            _lastHiddenUtc = null;
+            NavigateMain();
+            return;
+        }
+
+        if (_lastHiddenUtc.HasValue)
+        {
+            var hiddenFor = DateTime.UtcNow - _lastHiddenUtc.Value;
+            _lastHiddenUtc = null;
+            if (hiddenFor >= TimeSpan.FromMinutes(ShowRefreshAfterHideMinutes))
+                _webView.CoreWebView2.Reload();
         }
     }
 
@@ -78,16 +124,42 @@ sealed class MainForm : Form
         base.OnFormClosing(e);
     }
 
-    private async void OnNavigationCompleted(object? sender,
-        Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs args)
+    private void NavigateMain()
     {
+        _pendingNavKind = PendingNavKind.Main;
+        _webView.CoreWebView2.Navigate(_startUrl);
+    }
+
+    private void NavigateBlankClear()
+    {
+        _pendingNavKind = PendingNavKind.BlankClear;
+        _webView.CoreWebView2.NavigateToString("");
+    }
+
+    private async void OnNavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs args)
+    {
+        var kind = _pendingNavKind;
+        _pendingNavKind = PendingNavKind.Unknown;
+
+        if (kind == PendingNavKind.BlankClear)
+            return;
+
+        if (kind != PendingNavKind.Main)
+            return;
+
         bool shouldRetry = !args.IsSuccess || args.HttpStatusCode >= 500;
         if (shouldRetry && _navRetries < MaxNavRetries)
         {
+            if (!Visible)
+            {
+                _retryDueWhenVisible = true;
+                return;
+            }
+
             _navRetries++;
-            _webView.CoreWebView2.NavigateToString("");
+            NavigateBlankClear();
             await Task.Delay(RetryDelayMs);
-            _webView.CoreWebView2.Navigate(_startUrl);
+            NavigateMain();
             return;
         }
 
