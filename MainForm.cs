@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 
@@ -88,6 +89,7 @@ sealed class MainForm : Form
         _webView.CoreWebView2.NavigationStarting += OnNavigationStarting;
         _webView.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
         _webView.CoreWebView2.ServerCertificateErrorDetected += OnServerCertificateErrorDetected;
+        _webView.CoreWebView2.NewWindowRequested += OnNewWindowRequested;
     }
 
     private void UnwireWebView()
@@ -98,12 +100,54 @@ sealed class MainForm : Form
         _webView.CoreWebView2.NavigationStarting -= OnNavigationStarting;
         _webView.CoreWebView2.NavigationCompleted -= OnNavigationCompleted;
         _webView.CoreWebView2.ServerCertificateErrorDetected -= OnServerCertificateErrorDetected;
+        _webView.CoreWebView2.NewWindowRequested -= OnNewWindowRequested;
     }
 
     private void OnNavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs args)
     {
-        if (!IsNavigationAllowed(args.Uri, _allowedHost))
-            args.Cancel = true;
+        if (IsNavigationAllowed(args.Uri, _allowedHost))
+            return;
+
+        if (IsExternalHttpUrl(args.Uri, _allowedHost))
+            TryOpenInDefaultBrowser(args.Uri);
+
+        args.Cancel = true;
+    }
+
+    private void OnNewWindowRequested(object? sender, CoreWebView2NewWindowRequestedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(e.Uri) || !IsExternalHttpUrl(e.Uri, _allowedHost))
+            return;
+
+        e.Handled = true;
+        TryOpenInDefaultBrowser(e.Uri);
+    }
+
+    private static bool IsExternalHttpUrl(string uriString, string allowedHost)
+    {
+        if (string.IsNullOrEmpty(uriString))
+            return false;
+
+        if (!Uri.TryCreate(uriString, UriKind.Absolute, out var uri))
+            return false;
+
+        if (!string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        return !string.Equals(uri.Host, allowedHost, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void TryOpenInDefaultBrowser(string uriString)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(uriString) { UseShellExecute = true });
+        }
+        catch
+        {
+            // Shell may reject malformed or blocked URIs; ignore.
+        }
     }
 
     private void OnServerCertificateErrorDetected(object? sender, CoreWebView2ServerCertificateErrorDetectedEventArgs e)
