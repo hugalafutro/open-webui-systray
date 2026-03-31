@@ -12,17 +12,25 @@ sealed class MainForm : Form
         BlankClear,
     }
 
-    private readonly WebView2 _webView;
+    private WebView2 _webView;
     private readonly string _startUrl;
+    private string _allowedHost = "";
     private int _navRetries;
     private PendingNavKind _pendingNavKind;
     private bool _retryDueWhenVisible;
     private bool _webViewInitialized;
     private DateTime? _lastHiddenUtc;
 
+    private int _certRecoveryCount;
+    private bool _certRecoveryInProgress;
+    private DateTime _lastTlsRecoveryStartUtc;
+    private readonly object _certRecoveryLock = new();
+
     private const int MaxNavRetries = 30;
     private const int RetryDelayMs = 5_000;
     private const int ShowRefreshAfterHideMinutes = 10;
+    private const int MaxCertRecoveries = 2;
+    private static readonly TimeSpan TlsRecoveryDebounce = TimeSpan.FromSeconds(3);
 
     public MainForm(string startUrl)
     {
@@ -53,19 +61,7 @@ sealed class MainForm : Form
                 userDataFolder: dataDir);
 
             await _webView.EnsureCoreWebView2Async(env);
-            _webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
-            _webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
-            _webView.ZoomFactor = 0.9;
-
-            var startUri = new Uri(_startUrl);
-            var allowedHost = startUri.Host;
-            _webView.CoreWebView2.NavigationStarting += (_, args) =>
-            {
-                if (!IsNavigationAllowed(args.Uri, allowedHost))
-                    args.Cancel = true;
-            };
-
-            _webView.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
+            WireWebView();
 
             _webViewInitialized = true;
             NavigateMain();
@@ -79,6 +75,90 @@ sealed class MainForm : Form
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
             Application.Exit();
+        }
+    }
+
+    private void WireWebView()
+    {
+        _allowedHost = new Uri(_startUrl).Host;
+        _webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
+        _webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
+        _webView.ZoomFactor = 0.9;
+
+        _webView.CoreWebView2.NavigationStarting += OnNavigationStarting;
+        _webView.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
+        _webView.CoreWebView2.ServerCertificateErrorDetected += OnServerCertificateErrorDetected;
+    }
+
+    private void UnwireWebView()
+    {
+        if (_webView.CoreWebView2 == null)
+            return;
+
+        _webView.CoreWebView2.NavigationStarting -= OnNavigationStarting;
+        _webView.CoreWebView2.NavigationCompleted -= OnNavigationCompleted;
+        _webView.CoreWebView2.ServerCertificateErrorDetected -= OnServerCertificateErrorDetected;
+    }
+
+    private void OnNavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs args)
+    {
+        if (!IsNavigationAllowed(args.Uri, _allowedHost))
+            args.Cancel = true;
+    }
+
+    private void OnServerCertificateErrorDetected(object? sender, CoreWebView2ServerCertificateErrorDetectedEventArgs e)
+    {
+        e.Action = CoreWebView2ServerCertificateErrorAction.Cancel;
+        BeginInvoke(EnqueueTlsRecovery);
+    }
+
+    private void EnqueueTlsRecovery()
+    {
+        _ = TryRecoverWebViewFromTlsAsync();
+    }
+
+    private async Task TryRecoverWebViewFromTlsAsync()
+    {
+        await Task.Yield();
+
+        lock (_certRecoveryLock)
+        {
+            if (_certRecoveryInProgress || _certRecoveryCount >= MaxCertRecoveries)
+                return;
+            var now = DateTime.UtcNow;
+            if (now - _lastTlsRecoveryStartUtc < TlsRecoveryDebounce)
+                return;
+            _lastTlsRecoveryStartUtc = now;
+            _certRecoveryInProgress = true;
+            _certRecoveryCount++;
+        }
+
+        try
+        {
+            var dataDir = Path.Combine(AppContext.BaseDirectory, "WebView2Data");
+
+            UnwireWebView();
+            Controls.Remove(_webView);
+            _webView.Dispose();
+
+            _webView = new WebView2
+            {
+                Dock = DockStyle.Fill,
+                DefaultBackgroundColor = Color.Black,
+            };
+            Controls.Add(_webView);
+
+            var env = await CoreWebView2Environment.CreateAsync(userDataFolder: dataDir);
+            await _webView.EnsureCoreWebView2Async(env);
+            WireWebView();
+
+            _pendingNavKind = PendingNavKind.Unknown;
+            NavigateMain();
+        }
+        finally
+        {
+            lock (_certRecoveryLock)
+                _certRecoveryInProgress = false;
         }
     }
 
@@ -147,6 +227,12 @@ sealed class MainForm : Form
         if (kind != PendingNavKind.Main)
             return;
 
+        if (!args.IsSuccess && IsCertificateWebError(args.WebErrorStatus))
+        {
+            BeginInvoke(EnqueueTlsRecovery);
+            return;
+        }
+
         bool shouldRetry = !args.IsSuccess || args.HttpStatusCode >= 500;
         if (shouldRetry && _navRetries < MaxNavRetries)
         {
@@ -164,7 +250,19 @@ sealed class MainForm : Form
         }
 
         if (args.IsSuccess && args.HttpStatusCode < 400)
+        {
             _navRetries = 0;
+            _certRecoveryCount = 0;
+        }
+    }
+
+    private static bool IsCertificateWebError(CoreWebView2WebErrorStatus status)
+    {
+        return status is CoreWebView2WebErrorStatus.CertificateCommonNameIsIncorrect
+            or CoreWebView2WebErrorStatus.CertificateExpired
+            or CoreWebView2WebErrorStatus.ClientCertificateContainsErrors
+            or CoreWebView2WebErrorStatus.CertificateRevoked
+            or CoreWebView2WebErrorStatus.CertificateIsInvalid;
     }
 
     private static bool IsNavigationAllowed(string uriString, string allowedHost)
