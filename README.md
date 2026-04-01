@@ -56,6 +56,7 @@ Only **https://** URLs with a host are accepted.
 - **Single instance** - a second copy exits immediately (lock file under `$XDG_RUNTIME_DIR` or a temp fallback).
 - **Tray icon** - left-click shows or focuses the browser window; **Quit** is in the tray context menu.
 - **Close button** - hides the window to the tray (does not exit the app).
+- **Resume recovery** - after long tray-hidden periods, the app reloads the configured URL on restore and recreates the embedded browser if the Qt WebEngine renderer has died.
 - **Same-host navigation** - the embedded browser only allows navigations on the host of the configured URL (plus `about:`, `data:`, `blob:`, and fragment-only URLs), matching the previous WebView2 behavior.
 
 ## Project layout
