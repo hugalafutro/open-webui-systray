@@ -2,6 +2,9 @@
 
 > *Third-party:* This is an independent tool and is not officially affiliated with the [Open WebUI](https://github.com/open-webui/open-webui) project.
 
+> [!TIP]
+> **Looking for Windows?** This README is for the **Linux** build. For **Windows** (.NET), use the [**main** branch](https://github.com/hugalafutro/open-webui-systray) — same idea, native system tray on Windows.
+
 # Open WebUI Systray
 
 Small **Linux / KDE Plasma 6** system tray application that opens an **[Open WebUI](https://github.com/open-webui/open-webui)** (or any **HTTPS**) instance inside an embedded **Qt WebEngine** (Chromium) window. Run it, park it in the tray, and show or hide the window from the icon.
