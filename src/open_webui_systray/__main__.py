@@ -58,9 +58,16 @@ def acquire_single_instance_lock() -> IO[str] | None:
 
 
 def try_resolve_start_url() -> str | None:
-    ok, url, initial = try_load()
+    ok, url, initial, load_error = try_load()
     if ok:
         return url
+
+    if load_error:
+        QMessageBox.warning(
+            None,
+            "Open WebUI Systray",
+            f"{load_error}\n\nPlease review the config file or enter a new URL.",
+        )
 
     dlg = UrlSetupDialog(initial or "")
     if dlg.exec() != QDialog.DialogCode.Accepted or dlg.accepted_url is None:

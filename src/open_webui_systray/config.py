@@ -46,27 +46,47 @@ def try_validate_https_url(input_text: str) -> tuple[bool, str]:
     return True, normalized
 
 
-def try_load() -> tuple[bool, str, str | None]:
+def try_load() -> tuple[bool, str, str | None, str | None]:
     """
-    Returns (success, url, initial_for_dialog_if_invalid).
-    If file missing or no valid line: success False, initial None unless invalid line.
+    Returns (success, url, initial_for_dialog_if_invalid, load_error_message).
+    Config supports one active URL line plus optional key=value settings.
     """
     path = config_path()
     if not path.is_file():
-        return False, "", None
+        return False, "", None, None
 
-    initial_for_dialog: str | None = None
+    active_lines: list[str] = []
     for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():
         line = raw.strip()
         if not line or line.startswith("#"):
             continue
-        ok, normalized = try_validate_https_url(line)
-        if ok:
-            return True, normalized, None
-        initial_for_dialog = line
-        return False, "", initial_for_dialog
+        if "=" in line:
+            key, _value = line.split("=", 1)
+            if key.strip().lower() == "zoom_factor":
+                continue
+        active_lines.append(line)
 
-    return False, "", None
+    if not active_lines:
+        return False, "", None, None
+    if len(active_lines) > 1:
+        return (
+            False,
+            "",
+            None,
+            "Configuration file must contain exactly one HTTPS URL line. "
+            f"Found {len(active_lines)} active URL entries.",
+        )
+
+    only_line = active_lines[0]
+    ok, normalized = try_validate_https_url(only_line)
+    if ok:
+        return True, normalized, None, None
+    return (
+        False,
+        "",
+        only_line,
+        "Configuration file does not contain a valid HTTPS URL with a host.",
+    )
 
 
 def save(url: str) -> None:
