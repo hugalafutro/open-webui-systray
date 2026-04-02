@@ -8,7 +8,7 @@ import time
 from urllib.parse import urlparse
 
 from PyQt6.QtCore import QTimer, QUrl, Qt
-from PyQt6.QtGui import QColor, QCloseEvent, QGuiApplication, QHideEvent, QIcon, QShowEvent
+from PyQt6.QtGui import QColor, QCloseEvent, QCursor, QGuiApplication, QHideEvent, QIcon, QShowEvent
 from PyQt6.QtWebEngineCore import (
     QWebEngineCertificateError,
     QWebEngineLoadingInfo,
@@ -270,7 +270,11 @@ class MainWindow(QMainWindow):
             if wh is not None:
                 screen = wh.screen()
         if screen is None:
-            screen = self.screen() or QApplication.primaryScreen()
+            screen = self.screen()
+        if screen is None:
+            screen = QGuiApplication.screenAt(QCursor.pos())
+        if screen is None:
+            screen = QApplication.primaryScreen()
         if screen is None:
             return
         wa = screen.availableGeometry()
