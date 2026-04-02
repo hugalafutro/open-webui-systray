@@ -12,6 +12,7 @@ from PyQt6.QtGui import (
     QColor,
     QCloseEvent,
     QCursor,
+    QDesktopServices,
     QGuiApplication,
     QHideEvent,
     QIcon,
@@ -56,6 +57,27 @@ def _is_navigation_allowed(uri_string: str, allowed_host: str) -> bool:
     return False
 
 
+def _should_delegate_to_system_browser(uri_string: str, allowed_host: str) -> bool:
+    """URLs that are blocked in-webview but should open in the OS default app (browser, mail, …)."""
+    if not uri_string or uri_string.startswith("#"):
+        return False
+    parsed = urlparse(uri_string)
+    scheme = parsed.scheme.lower()
+    if scheme in ("http", "https"):
+        host = parsed.hostname or ""
+        return bool(host) and host.lower() != allowed_host.lower()
+    if scheme in ("mailto", "tel", "sms"):
+        return True
+    return False
+
+
+def _try_open_with_system_handler(url: QUrl) -> bool:
+    ok = QDesktopServices.openUrl(url)
+    if not ok:
+        log.warning("Could not open URL with system handler: %s", url.toString())
+    return ok
+
+
 class RestrictedWebEnginePage(QWebEnginePage):
     def __init__(
         self,
@@ -71,10 +93,19 @@ class RestrictedWebEnginePage(QWebEnginePage):
     def acceptNavigationRequest(
         self,
         url: QUrl,
-        _nav_type: QWebEnginePage.NavigationType,
-        _is_main_frame: bool,
+        nav_type: QWebEnginePage.NavigationType,
+        is_main_frame: bool,
     ) -> bool:
-        return _is_navigation_allowed(url.toString(), self._allowed_host)
+        url_str = url.toString()
+        if _is_navigation_allowed(url_str, self._allowed_host):
+            return True
+        if _should_delegate_to_system_browser(url_str, self._allowed_host):
+            if is_main_frame or (
+                nav_type == QWebEnginePage.NavigationType.NavigationTypeLinkClicked
+            ):
+                _try_open_with_system_handler(url)
+            return False
+        return False
 
     def certificateError(self, error: QWebEngineCertificateError) -> bool:
         self._failure_callback(
