@@ -1,4 +1,4 @@
-"""Optional Plasma global shortcut via org.kde.kglobalaccel (QtDBus signal + gdbus/dbus-send calls)."""
+"""Optional Plasma global shortcut via org.kde.kglobalaccel (gdbus for register/unregister; QtDBus for key signal)."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ def _gdbus_available() -> bool:
 
 
 def _gdbus_call(method: str, *json_args: str) -> subprocess.CompletedProcess[str]:
-    """Call org.kde.KGlobalAccel.<method> on /kglobalaccel; extra args are gdbus JSON fragments."""
+    """Call org.kde.KGlobalAccel.<method> on /kglobalaccel; further args are gdbus JSON values."""
     cmd = [
         "gdbus",
         "call",
