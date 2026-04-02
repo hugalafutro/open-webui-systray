@@ -8,7 +8,16 @@ import time
 from urllib.parse import urlparse
 
 from PyQt6.QtCore import QTimer, QUrl, Qt
-from PyQt6.QtGui import QColor, QCloseEvent, QCursor, QGuiApplication, QHideEvent, QIcon, QShowEvent
+from PyQt6.QtGui import (
+    QColor,
+    QCloseEvent,
+    QCursor,
+    QGuiApplication,
+    QHideEvent,
+    QIcon,
+    QScreen,
+    QShowEvent,
+)
 from PyQt6.QtWebEngineCore import (
     QWebEngineCertificateError,
     QWebEngineLoadingInfo,
@@ -103,6 +112,8 @@ class MainWindow(QMainWindow):
         self._hidden_since_monotonic: float | None = None
         self._reload_when_shown = False
         self._recreate_when_shown = False
+        self._screen_changed_connected = False
+        self._screen_changed_connect_attempts = 0
 
         self.setWindowTitle("Open WebUI Systray")
         self.resize(1280, 800)
@@ -297,6 +308,23 @@ class MainWindow(QMainWindow):
         y = max(wa.top(), min(y, wa.bottom() - h))
         self.move(x, y)
 
+    def _ensure_screen_changed_connection(self) -> None:
+        if self._screen_changed_connected:
+            return
+        wh = self.windowHandle()
+        if wh is None:
+            self._screen_changed_connect_attempts += 1
+            if self._screen_changed_connect_attempts <= 10:
+                QTimer.singleShot(0, self._ensure_screen_changed_connection)
+            return
+        wh.screenChanged.connect(self._on_window_screen_changed)
+        self._screen_changed_connected = True
+
+    def _on_window_screen_changed(self, _screen: QScreen | None) -> None:
+        if self._force_quit or self._web_view is None:
+            return
+        self._web_view.setZoomFactor(webview_zoom_factor())
+
     def hideEvent(self, event: QHideEvent) -> None:
         self._retry_timer.stop()
         self._was_hidden_for_tray = True
@@ -305,6 +333,7 @@ class MainWindow(QMainWindow):
 
     def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
+        self._ensure_screen_changed_connection()
         if self._was_hidden_for_tray:
             self._was_hidden_for_tray = False
             hidden_for = 0.0
