@@ -3,7 +3,8 @@ using System.Runtime.InteropServices;
 namespace OpenWebUiSystray;
 
 /// <summary>
-/// Message-only window that registers a global hotkey (Ctrl+Alt+O). Dispose to unregister.
+/// Message-only window that registers a global hotkey (Ctrl+Alt+O). Call <see cref="TryRegister"/> after construction;
+/// use <see cref="Unregister"/> to release the chord without destroying the window. Dispose to tear down.
 /// </summary>
 sealed class GlobalHotkeyWindow : NativeWindow, IDisposable
 {
@@ -26,16 +27,32 @@ sealed class GlobalHotkeyWindow : NativeWindow, IDisposable
             Parent = new IntPtr(-3), // HWND_MESSAGE
         };
         CreateHandle(cp);
-        if (!RegisterHotKey(Handle, HotkeyId, Modifiers, VkO))
-        {
-            DestroyHandle();
-            return;
-        }
-
-        _registered = true;
     }
 
+    /// <summary>Returns true if the global hotkey is currently registered with the system.</summary>
     public bool IsRegistered => _registered;
+
+    /// <summary>Registers Ctrl+Alt+O if not already registered. Returns false if another app owns the chord.</summary>
+    public bool TryRegister()
+    {
+        if (_registered)
+            return true;
+        if (Handle == IntPtr.Zero)
+            return false;
+        if (!RegisterHotKey(Handle, HotkeyId, Modifiers, VkO))
+            return false;
+        _registered = true;
+        return true;
+    }
+
+    /// <summary>Unregisters the hotkey but keeps the message-only window (allows <see cref="TryRegister"/> later).</summary>
+    public void Unregister()
+    {
+        if (!_registered || Handle == IntPtr.Zero)
+            return;
+        UnregisterHotKey(Handle, HotkeyId);
+        _registered = false;
+    }
 
     protected override void WndProc(ref Message m)
     {

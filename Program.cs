@@ -1,3 +1,5 @@
+using System.Windows.Forms;
+
 namespace OpenWebUiSystray;
 
 static class Program
@@ -11,6 +13,7 @@ static class Program
         if (!createdNew)
             return;
 
+        Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
         ApplicationConfiguration.Initialize();
 
         if (!Startup.TryResolveStartUrl(out var startUrl))

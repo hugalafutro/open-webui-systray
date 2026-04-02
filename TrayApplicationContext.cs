@@ -7,14 +7,21 @@ namespace OpenWebUiSystray;
 
 sealed class TrayApplicationContext : ApplicationContext
 {
+    private const uint EventSystemForeground = 0x0003;
+    private const uint WineventOutOfContext = 0;
+
     private readonly NotifyIcon _trayIcon;
     private readonly string _startUrl;
+    private readonly Control _invokeControl = new();
+    private readonly WinEventDelegate _foregroundWinEvent;
     private MainForm? _mainForm;
     private GlobalHotkeyWindow? _globalHotkey;
+    private IntPtr _winEventHook;
 
     public TrayApplicationContext(string startUrl)
     {
         _startUrl = startUrl;
+        _foregroundWinEvent = OnForegroundWinEvent;
 
         var quitItem = new ToolStripMenuItem("Quit", null, (_, _) => Application.Exit());
         var contextMenu = new ContextMenuStrip();
@@ -30,12 +37,58 @@ sealed class TrayApplicationContext : ApplicationContext
 
         _trayIcon.MouseClick += OnTrayClick;
 
+        _invokeControl.CreateControl();
+
         _globalHotkey = new GlobalHotkeyWindow(ToggleMainWindow);
-        if (!_globalHotkey.IsRegistered)
+        _winEventHook = SetWinEventHook(
+            EventSystemForeground,
+            EventSystemForeground,
+            IntPtr.Zero,
+            _foregroundWinEvent,
+            0,
+            0,
+            WineventOutOfContext);
+        SyncHotkeyRegistration();
+    }
+
+    private IntPtr? MainFormHandle()
+    {
+        if (_mainForm is not { IsDisposed: false })
+            return null;
+        try
         {
-            _globalHotkey.Dispose();
-            _globalHotkey = null;
+            return _mainForm.Handle;
         }
+        catch (ObjectDisposedException)
+        {
+            return null;
+        }
+    }
+
+    private void OnForegroundWinEvent(
+        IntPtr hWinEventHook,
+        uint eventType,
+        IntPtr hwnd,
+        int idObject,
+        int idChild,
+        uint idEventThread,
+        uint dwmsTimeStamp)
+    {
+        if (_invokeControl.InvokeRequired)
+            _invokeControl.BeginInvoke(SyncHotkeyRegistration);
+        else
+            SyncHotkeyRegistration();
+    }
+
+    private void SyncHotkeyRegistration()
+    {
+        if (_globalHotkey == null)
+            return;
+
+        if (FullscreenHotkeyPolicy.ShouldYieldGlobalHotkey(MainFormHandle))
+            _globalHotkey.Unregister();
+        else
+            _globalHotkey.TryRegister();
     }
 
     private void OnTrayClick(object? sender, MouseEventArgs e)
@@ -51,16 +104,19 @@ sealed class TrayApplicationContext : ApplicationContext
         {
             _mainForm = new MainForm(_startUrl) { Icon = _trayIcon.Icon };
             ShowMainWindow();
+            SyncHotkeyRegistration();
             return;
         }
 
         if (_mainForm.Visible && _mainForm.WindowState != FormWindowState.Minimized)
         {
             _mainForm.Hide();
+            SyncHotkeyRegistration();
             return;
         }
 
         ShowMainWindow();
+        SyncHotkeyRegistration();
     }
 
     private void ShowMainWindow()
@@ -116,10 +172,39 @@ sealed class TrayApplicationContext : ApplicationContext
         return path;
     }
 
+    [DllImport("user32.dll")]
+    private static extern IntPtr SetWinEventHook(
+        uint eventMin,
+        uint eventMax,
+        IntPtr hmodWinEventProc,
+        WinEventDelegate lpfnWinEventProc,
+        uint idProcess,
+        uint idThread,
+        uint dwFlags);
+
+    [DllImport("user32.dll")]
+    private static extern bool UnhookWinEventHook(IntPtr hWinEventHook);
+
+    private delegate void WinEventDelegate(
+        IntPtr hWinEventHook,
+        uint eventType,
+        IntPtr hwnd,
+        int idObject,
+        int idChild,
+        uint idEventThread,
+        uint dwmsTimeStamp);
+
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
+            if (_winEventHook != IntPtr.Zero)
+            {
+                UnhookWinEventHook(_winEventHook);
+                _winEventHook = IntPtr.Zero;
+            }
+
+            _invokeControl.Dispose();
             _globalHotkey?.Dispose();
             _globalHotkey = null;
             _trayIcon.Visible = false;
