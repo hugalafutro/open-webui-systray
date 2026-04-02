@@ -43,6 +43,21 @@ chmod +x run.sh
 ./run.sh
 ```
 
+## Sync from git and global command (`install.sh`)
+
+If you keep a **git clone** of this repo and want **`open-webui-systray` on your PATH** (from any directory), run from the repository root:
+
+```bash
+chmod +x install.sh
+./install.sh
+```
+
+This runs **`git pull`**, ensures **`.venv`** exists, runs **`pip install -e .`**, and installs a small **wrapper** at **`~/.local/bin/open-webui-systray`**. The wrapper uses the **absolute path** to this clone’s venv and applies the same **Wayland** `QT_QPA_PLATFORM=xcb` behavior as [`run.sh`](run.sh). Re-run `./install.sh` after moving the clone or to refresh the wrapper.
+
+If **`~/.local/bin`** is not already on your **`PATH`**, add something like `export PATH="$HOME/.local/bin:$PATH"` to your shell configuration; the script prints a reminder when it detects that.
+
+Optional: **`./install.sh --launch`** performs the same steps and then starts the app **in the background** (same single-instance rules as a normal launch).
+
 ## Configuration
 
 On first run (or if no valid config exists), a dialog asks for the **HTTPS URL** of your server (for example your Open WebUI URL).
@@ -77,6 +92,7 @@ zoom_factor=1.0
 - `data/` - packager metadata (`.desktop` entry, icons)
 - `scripts/render_app_icons.py` - optional: regenerate theme PNGs when changing the in-app icon
 - `run.sh` - run from a clone without `pip install`
+- `install.sh` - `git pull`, refresh editable install, install `~/.local/bin/open-webui-systray` (optional `--launch`)
 - `src/open_webui_systray/` - application code (`__main__.py`, config, dialog, tray, main window)
 
 ## License
