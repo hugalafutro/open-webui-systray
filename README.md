@@ -3,7 +3,7 @@
 > *Third-party:* This is an independent tool and is not officially affiliated with the [Open WebUI](https://github.com/open-webui/open-webui) project.
 
 > [!TIP]
-> **Looking for Linux?** This README is for the **Windows** build. For **KDE Plasma** (KDE 6), use the [**kde6-rewrite** branch](https://github.com/hugalafutro/open-webui-systray/tree/kde6-rewrite) — same idea, native system tray on Linux.
+> **Looking for Linux?** This README is for the **Windows** build. For **KDE Plasma** (KDE 6), use the [**kde6-rewrite** branch](https://github.com/hugalafutro/open-webui-systray/tree/kde6-rewrite), same idea, native system tray on Linux.
 
 # Open WebUI Systray
 
