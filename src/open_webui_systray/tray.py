@@ -7,6 +7,10 @@ from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon
 
 from open_webui_systray.icon_brand import brand_pixmap
+from open_webui_systray.kde_global_shortcut import (
+    remove_registered_shortcut,
+    try_register_toggle_shortcut,
+)
 from open_webui_systray.mainwindow import MainWindow
 
 
@@ -20,6 +24,7 @@ class TrayManager:
         self._start_url = start_url
         self._main: MainWindow | None = None
         self._main_window_loading = False
+        self._kde_toggle_action: QAction | None = None
 
         self._icon = generate_tray_icon()
         self._tray = QSystemTrayIcon(self._icon)
@@ -33,6 +38,16 @@ class TrayManager:
 
         self._tray.activated.connect(self._on_tray_activated)
         self._tray.show()
+
+        self._kde_toggle_action = try_register_toggle_shortcut(self.toggle_main_window)
+        if self._kde_toggle_action is not None:
+            QApplication.instance().aboutToQuit.connect(self._cleanup_kde_global_shortcut)
+
+    def _cleanup_kde_global_shortcut(self) -> None:
+        if self._kde_toggle_action is None:
+            return
+        remove_registered_shortcut(self._kde_toggle_action)
+        self._kde_toggle_action = None
 
     def _on_tray_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
         if reason != QSystemTrayIcon.ActivationReason.Trigger:
