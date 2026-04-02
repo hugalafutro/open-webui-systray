@@ -21,8 +21,9 @@ COMPONENT_IFACE = "org.kde.kglobalaccel.Component"
 
 ACTION_OBJECT_NAME = "toggle-main-window"
 DEFAULT_SEQUENCE = "Ctrl+Alt+O"
-# setShortcut flags: KGlobalAccel::Autoloading == 0
-_SET_SHORTCUT_FLAGS = 0
+# setShortcut third arg: KGlobalAccelD::SetShortcutFlag (kglobalacceld.h). SetPresent = 2.
+# Without it, kglobalacceld never marks the shortcut present / grabs keys; invokeShortcut still works.
+_SET_SHORTCUT_FLAGS = 2  # SetPresent
 
 
 def _likely_kde_plasma_session() -> bool:
@@ -161,7 +162,7 @@ class KdeGlobalShortcutHandle(QObject):
     def signal_connected(self) -> bool:
         return self._signal_connected
 
-    @pyqtSlot(str, str, int)
+    @pyqtSlot(str, str, "qlonglong")
     def _on_global_shortcut_pressed(self, component_unique: str, action_unique: str, _ts: int) -> None:
         if component_unique == self._component and action_unique == self._action_name:
             self._toggle()
