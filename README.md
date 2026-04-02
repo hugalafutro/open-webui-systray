@@ -45,9 +45,18 @@ chmod +x run.sh
 
 On first run (or if no valid config exists), a dialog asks for the **HTTPS URL** of your server (for example your Open WebUI URL).
 
-Settings are stored under **`$XDG_CONFIG_HOME/open-webui-systray/open-webui-systray.cfg`** (usually `~/.config/open-webui-systray/open-webui-systray.cfg`): one non-comment line with the HTTPS URL. Lines starting with `#` are ignored.
+Settings are stored under **`$XDG_CONFIG_HOME/open-webui-systray/open-webui-systray.cfg`** (usually `~/.config/open-webui-systray/open-webui-systray.cfg`): exactly one non-comment URL line plus optional `key=value` settings. Lines starting with `#` are ignored.
 
 Only **https://** URLs with a host are accepted.
+
+Optional setting:
+
+```ini
+https://example.com
+zoom_factor=1.0
+```
+
+`zoom_factor` is optional, defaults to `0.9`, and is clamped to a safe range if set.
 
 **Qt WebEngine profile** (cookies, cache, etc.) lives under **`$XDG_DATA_HOME/open-webui-systray/`** (typically `~/.local/share/open-webui-systray/`).
 
@@ -57,7 +66,8 @@ Only **https://** URLs with a host are accepted.
 - **Tray icon** - left-click shows or focuses the browser window; **Quit** is in the tray context menu.
 - **Close button** - hides the window to the tray (does not exit the app).
 - **Resume recovery** - after long tray-hidden periods, the app reloads the configured URL on restore and recreates the embedded browser if the Qt WebEngine renderer has died.
-- **Same-host navigation** - the embedded browser only allows navigations on the host of the configured URL (plus `about:`, `data:`, `blob:`, and fragment-only URLs), matching the previous WebView2 behavior.
+- **Same-host navigation** - the embedded browser only allows same-host `http`/`https` navigations, fragment-only URLs, and `about:blank`.
+- **Missing WebEngine dependency** - if Qt WebEngine is unavailable at startup, the app shows an actionable install error instead of crashing on import.
 
 ## Project layout
 
