@@ -51,6 +51,7 @@ Only **https://** URLs with a host are accepted.
 
 - **Single instance** - starting a second copy exits immediately.
 - **Tray icon** - left-click shows or focuses the browser window; **Quit** is in the tray context menu.
+- **Global shortcut** - **Ctrl+Alt+O** toggles show or hide (same as tray left-click). If that hotkey is already registered by another program, this app does not register it for the session.
 - **Close button** - hides the window to the tray (does not exit the app).
 - **WebView2 user data** - stored under `WebView2Data\` beside the executable (cookies, cache, etc.).
 
@@ -58,6 +59,7 @@ Only **https://** URLs with a host are accepted.
 
 - `open-webui-systray.csproj` - .NET 8 WinExe project
 - `Program.cs`, `Startup.cs`, `AppConfig.cs` - entry, URL resolution, config
+- `GlobalHotkeyWindow.cs` - global Ctrl+Alt+O hotkey (message-only window)
 - `TrayApplicationContext.cs` - tray icon and menu
 - `MainForm.cs` - WebView2 host window
 
