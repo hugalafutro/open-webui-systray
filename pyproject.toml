@@ -14,11 +14,6 @@ dependencies = [
     "PyQt6-WebEngine>=6.6.0",
 ]
 
-# KGlobalAccel global shortcut: install PyKDE6 from your distribution first (no PyPI wheel),
-# e.g. Arch/CachyOS: pacman -S python-pykde6. Then: pip install -e ".[kde]" (resolves no extra pip deps).
-[project.optional-dependencies]
-kde = []
-
 [project.scripts]
 open-webui-systray = "open_webui_systray.__main__:main"
 
