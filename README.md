@@ -26,6 +26,8 @@ source .venv/bin/activate
 pip install -e .
 ```
 
+**KDE global shortcut (optional):** On Plasma, install **PyKDE6** from your distro (e.g. `pacman -S python-pykde6` on Arch/CachyOS), then `pip install -e ".[kde]"` — the extra documents the feature; KGlobalAccel uses the system bindings. If PyKDE6 is available, the app registers **Ctrl+Alt+O** to show/hide the window when registration succeeds (skipped if the shortcut is unavailable or conflicts).
+
 ## Run
 
 After install:
