@@ -10,6 +10,7 @@ sealed class TrayApplicationContext : ApplicationContext
     private readonly NotifyIcon _trayIcon;
     private readonly string _startUrl;
     private MainForm? _mainForm;
+    private GlobalHotkeyWindow? _globalHotkey;
 
     public TrayApplicationContext(string startUrl)
     {
@@ -28,12 +29,24 @@ sealed class TrayApplicationContext : ApplicationContext
         };
 
         _trayIcon.MouseClick += OnTrayClick;
+
+        _globalHotkey = new GlobalHotkeyWindow(ToggleMainWindow);
+        if (!_globalHotkey.IsRegistered)
+        {
+            _globalHotkey.Dispose();
+            _globalHotkey = null;
+        }
     }
 
     private void OnTrayClick(object? sender, MouseEventArgs e)
     {
         if (e.Button != MouseButtons.Left) return;
 
+        ToggleMainWindow();
+    }
+
+    private void ToggleMainWindow()
+    {
         if (_mainForm == null || _mainForm.IsDisposed)
         {
             _mainForm = new MainForm(_startUrl) { Icon = _trayIcon.Icon };
@@ -107,6 +120,8 @@ sealed class TrayApplicationContext : ApplicationContext
     {
         if (disposing)
         {
+            _globalHotkey?.Dispose();
+            _globalHotkey = null;
             _trayIcon.Visible = false;
             _trayIcon.Dispose();
             if (_mainForm is { IsDisposed: false })
