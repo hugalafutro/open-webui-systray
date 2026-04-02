@@ -32,7 +32,7 @@ log = logging.getLogger(__name__)
 def _is_navigation_allowed(uri_string: str, allowed_host: str) -> bool:
     """Match WinForms WebView2 NavigationStarting policy."""
     if not uri_string:
-        return True
+        return False
     if uri_string.startswith("#"):
         return True
     parsed = urlparse(uri_string)
@@ -40,11 +40,7 @@ def _is_navigation_allowed(uri_string: str, allowed_host: str) -> bool:
     if not scheme:
         return False
     if scheme == "about":
-        return True
-    if scheme == "data":
-        return True
-    if scheme == "blob":
-        return True
+        return uri_string == "about:blank"
     if scheme in ("http", "https"):
         host = parsed.hostname or ""
         return host.lower() == allowed_host.lower()
