@@ -46,6 +46,29 @@ def try_validate_https_url(input_text: str) -> tuple[bool, str]:
     return True, normalized
 
 
+def webview_zoom_factor() -> float:
+    """Return a validated zoom factor from config or the default."""
+    default = 0.9
+    path = config_path()
+    if not path.is_file():
+        return default
+
+    for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        if key.strip().lower() != "zoom_factor":
+            continue
+        try:
+            zoom = float(value.strip())
+        except ValueError:
+            return default
+        return min(3.0, max(0.25, zoom))
+
+    return default
+
+
 def try_load() -> tuple[bool, str, str | None, str | None]:
     """
     Returns (success, url, initial_for_dialog_if_invalid, load_error_message).

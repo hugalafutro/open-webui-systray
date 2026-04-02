@@ -19,7 +19,7 @@ from PyQt6.QtWebEngineCore import (
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWidgets import QApplication, QMainWindow, QMessageBox, QSystemTrayIcon
 
-from open_webui_systray.config import data_dir
+from open_webui_systray.config import data_dir, webview_zoom_factor
 
 _EDGE_MARGIN = 8
 _MAX_LOAD_RETRIES = 30
@@ -146,7 +146,7 @@ class MainWindow(QMainWindow):
         web_view.setPage(page)
         web_view.setStyleSheet("background-color: black;")
         page.setBackgroundColor(QColor(0, 0, 0))
-        web_view.setZoomFactor(0.9)
+        web_view.setZoomFactor(webview_zoom_factor())
         page.loadingChanged.connect(self._on_loading_changed)
         web_view.renderProcessTerminated.connect(self._on_render_process_terminated)
 
