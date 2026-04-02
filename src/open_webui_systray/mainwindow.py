@@ -22,6 +22,7 @@ from PyQt6.QtGui import (
 from PyQt6.QtWebEngineCore import (
     QWebEngineCertificateError,
     QWebEngineLoadingInfo,
+    QWebEngineNewWindowRequest,
     QWebEnginePage,
     QWebEngineProfile,
     QWebEngineSettings,
@@ -190,6 +191,7 @@ class MainWindow(QMainWindow):
         page.setBackgroundColor(QColor(0, 0, 0))
         web_view.setZoomFactor(webview_zoom_factor())
         page.loadingChanged.connect(self._on_loading_changed)
+        page.newWindowRequested.connect(self._on_new_window_requested)
         web_view.renderProcessTerminated.connect(self._on_render_process_terminated)
 
         self._profile = profile
@@ -199,6 +201,16 @@ class MainWindow(QMainWindow):
 
         if load_start_url:
             web_view.load(QUrl(self._start_url))
+
+    def _on_new_window_requested(self, request: QWebEngineNewWindowRequest) -> None:
+        """Handle target=_blank and window.open; external URLs use the default browser."""
+        u = request.requestedUrl()
+        s = u.toString()
+        if _should_delegate_to_system_browser(s, self._allowed_host):
+            _try_open_with_system_handler(u)
+            return
+        if _is_navigation_allowed(s, self._allowed_host) and self._web_view is not None:
+            self._web_view.load(u)
 
     def _destroy_browser(self) -> None:
         if self._web_view is None:
