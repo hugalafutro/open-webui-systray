@@ -31,9 +31,6 @@ import tempfile
 from pathlib import Path
 from typing import IO
 
-# Ensure Qt WebEngine is loaded before QApplication (Qt recommendation).
-from PyQt6.QtWebEngineWidgets import QWebEngineView  # noqa: F401
-
 from PyQt6.QtWidgets import QApplication, QDialog, QMessageBox, QSystemTrayIcon
 
 from open_webui_systray.config import save, try_load
@@ -92,6 +89,15 @@ def _prefer_xcb_on_wayland() -> None:
         os.environ["QT_QPA_PLATFORM"] = "xcb"
 
 
+def _try_import_qt_webengine() -> str | None:
+    """Load Qt WebEngine before QApplication; return an error string if unavailable."""
+    try:
+        from PyQt6.QtWebEngineWidgets import QWebEngineView  # noqa: F401
+    except ImportError as ex:
+        return str(ex)
+    return None
+
+
 def main() -> int:
     lock_fp = acquire_single_instance_lock()
     if lock_fp is None:
@@ -99,6 +105,18 @@ def main() -> int:
 
     try:
         _prefer_xcb_on_wayland()
+        webengine_import_error = _try_import_qt_webengine()
+        if webengine_import_error is not None:
+            app = QApplication(sys.argv)
+            QMessageBox.critical(
+                None,
+                "Open WebUI Systray",
+                "Qt WebEngine is not available.\n\n"
+                "Install the `PyQt6-WebEngine` Python package or your distribution's "
+                "PyQt6 WebEngine package, then start the app again.\n\n"
+                f"Import error: {webengine_import_error}",
+            )
+            return 1
         app = QApplication(sys.argv)
         app.setQuitOnLastWindowClosed(False)
         # WM_CLASS follows applicationName; *.desktop StartupWMClass must match (case-sensitive) for Plasma.
