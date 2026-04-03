@@ -112,9 +112,34 @@ def try_load() -> tuple[bool, str, str | None, str | None]:
     )
 
 
+def _first_zoom_factor_line(text: str) -> str | None:
+    """First zoom_factor= line in file order (matches webview_zoom_factor)."""
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            continue
+        key, _value = line.split("=", 1)
+        if key.strip().lower() != "zoom_factor":
+            continue
+        return raw.rstrip()
+    return None
+
+
 def save(url: str) -> None:
     ok, normalized = try_validate_https_url(url)
     if not ok:
         raise ValueError("URL must be a valid https address with a host.")
     path = config_path()
-    path.write_text(normalized + os.linesep, encoding="utf-8")
+    zoom_line: str | None = None
+    if path.is_file():
+        zoom_line = _first_zoom_factor_line(
+            path.read_text(encoding="utf-8", errors="replace")
+        )
+    if zoom_line is None:
+        path.write_text(normalized + os.linesep, encoding="utf-8")
+    else:
+        path.write_text(
+            normalized + os.linesep + zoom_line + os.linesep, encoding="utf-8"
+        )
