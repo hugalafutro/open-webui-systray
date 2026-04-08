@@ -36,6 +36,8 @@ _EDGE_MARGIN = 8
 _MAX_LOAD_RETRIES = 30
 _RELOAD_DELAY_MS = 5000
 _LONG_HIDE_RELOAD_SECONDS = 300
+_MAX_CERT_RECOVERIES = 2
+_TLS_RECOVERY_DEBOUNCE_SECONDS = 3.0
 
 log = logging.getLogger(__name__)
 
@@ -146,6 +148,11 @@ class MainWindow(QMainWindow):
         self._recreate_when_shown = False
         self._screen_changed_connected = False
         self._screen_changed_connect_attempts = 0
+        self._cert_recovery_count = 0
+        self._cert_recovery_in_progress = False
+        self._last_tls_recovery_start_monotonic = 0.0
+        self._force_fresh_profile_next_recovery = False
+        self._using_recovery_profile = False
 
         self.setWindowTitle("Open WebUI Systray")
         self.resize(1280, 800)
@@ -161,21 +168,28 @@ class MainWindow(QMainWindow):
 
         self._create_browser(load_start_url=True)
 
-    def _create_profile(self) -> QWebEngineProfile:
+    def _create_profile(self, recovery_mode: bool = False) -> QWebEngineProfile:
         storage_root = data_dir()
         # defaultProfile() is off-the-record with NoPersistentCookies, so logins never persist.
         # A named profile is on-disk; keep a Python reference so the profile is not finalized
         # before the page is torn down (Qt warning about profile released while page exists).
-        profile = QWebEngineProfile("open-webui-systray", self)
-        profile.setPersistentStoragePath(str(storage_root / "qtwebengine"))
-        profile.setCachePath(str(storage_root / "qtwebengine-cache"))
+        profile_name = (
+            "open-webui-systray-recovery" if recovery_mode else "open-webui-systray"
+        )
+        profile_storage_dir = "qtwebengine-recovery" if recovery_mode else "qtwebengine"
+        profile_cache_dir = (
+            "qtwebengine-cache-recovery" if recovery_mode else "qtwebengine-cache"
+        )
+        profile = QWebEngineProfile(profile_name, self)
+        profile.setPersistentStoragePath(str(storage_root / profile_storage_dir))
+        profile.setCachePath(str(storage_root / profile_cache_dir))
         profile.setPersistentCookiesPolicy(
             QWebEngineProfile.PersistentCookiesPolicy.AllowPersistentCookies
         )
         return profile
 
-    def _create_browser(self, load_start_url: bool) -> None:
-        profile = self._create_profile()
+    def _create_browser(self, load_start_url: bool, recovery_mode: bool = False) -> None:
+        profile = self._create_profile(recovery_mode=recovery_mode)
         web_view = QWebEngineView(self)
         page = RestrictedWebEnginePage(
             self._allowed_host,
@@ -197,6 +211,7 @@ class MainWindow(QMainWindow):
         self._profile = profile
         self._page = page
         self._web_view = web_view
+        self._using_recovery_profile = recovery_mode
         self.setCentralWidget(web_view)
 
         if load_start_url:
@@ -227,17 +242,101 @@ class MainWindow(QMainWindow):
             old_page.deleteLater()
         old_web_view.deleteLater()
 
-    def _recreate_browser(self, reason: str, load_start_url: bool = True) -> None:
+    def _recreate_browser(
+        self,
+        reason: str,
+        load_start_url: bool = True,
+        force_recovery_profile: bool | None = None,
+    ) -> None:
         if self._force_quit:
             return
-        log.warning("Recreating embedded browser: %s", reason)
+        recovery_mode = (
+            force_recovery_profile
+            if force_recovery_profile is not None
+            else self._using_recovery_profile
+        )
+        log.warning(
+            "recreating_embedded_browser: reason=%s, recovery_profile=%s",
+            reason,
+            recovery_mode,
+        )
         self._destroy_browser()
-        self._create_browser(load_start_url=load_start_url)
+        self._create_browser(load_start_url=load_start_url, recovery_mode=recovery_mode)
+
+    def _looks_like_cert_verifier_changed(self, error_text: str) -> bool:
+        text = error_text.upper()
+        return "ERR_CERT_VERIFIER_CHANGED" in text
+
+    def _looks_like_tls_certificate_failure(
+        self,
+        domain: QWebEngineLoadingInfo.ErrorDomain,
+        error_code: int,
+        error_text: str,
+    ) -> bool:
+        text = error_text.upper()
+        if "CERT" in text:
+            return True
+        cert_domain = getattr(
+            QWebEngineLoadingInfo.ErrorDomain,
+            "CertificateErrorDomain",
+            None,
+        )
+        if cert_domain is not None and domain == cert_domain:
+            return True
+        # Chromium network certificate errors are commonly in this range.
+        return error_code <= -200 and error_code >= -219
+
+    def _schedule_tls_recovery(self, reason: str, force_fresh_profile: bool) -> None:
+        if self._force_quit:
+            return
+        now = time.monotonic()
+        if self._cert_recovery_in_progress:
+            log.info("tls_recovery_suppressed_in_progress: %s", reason)
+            return
+        if self._cert_recovery_count >= _MAX_CERT_RECOVERIES:
+            log.warning("tls_recovery_limit_reached: %s", reason)
+            return
+        if now - self._last_tls_recovery_start_monotonic < _TLS_RECOVERY_DEBOUNCE_SECONDS:
+            log.info("tls_recovery_suppressed_debounce: %s", reason)
+            return
+        self._cert_recovery_in_progress = True
+        self._last_tls_recovery_start_monotonic = now
+        self._cert_recovery_count += 1
+        self._force_fresh_profile_next_recovery = (
+            self._force_fresh_profile_next_recovery or force_fresh_profile
+        )
+
+        recovery_mode = (
+            self._force_fresh_profile_next_recovery or self._using_recovery_profile
+        )
+        if not self.isVisible():
+            self._recreate_when_shown = True
+            self._reload_when_shown = True
+            log.info(
+                "tls_recovery_deferred_until_visible: reason=%s, recovery_profile=%s",
+                reason,
+                recovery_mode,
+            )
+            self._cert_recovery_in_progress = False
+            return
+
+        try:
+            if recovery_mode:
+                log.warning("tls_recovery_fresh_profile: %s", reason)
+            self._recreate_browser(reason, force_recovery_profile=recovery_mode)
+        finally:
+            self._cert_recovery_in_progress = False
 
     def _schedule_recovery(self, failure_kind: str, reason: str) -> None:
         if self._force_quit:
             return
-        log.warning("%s", reason)
+        if failure_kind == "tls_verifier_changed":
+            self._schedule_tls_recovery(reason, force_fresh_profile=True)
+            return
+        if failure_kind == "certificate":
+            self._schedule_tls_recovery(reason, force_fresh_profile=False)
+            return
+        log.warning("load_recovery: %s", reason)
         if failure_kind == "renderer":
             if self.isVisible():
                 self._recreate_browser(reason)
@@ -279,20 +378,50 @@ class MainWindow(QMainWindow):
             info.errorDomain() == QWebEngineLoadingInfo.ErrorDomain.HttpStatusCodeDomain
             and info.errorCode() >= 500
         )
+        error_text = info.errorString() or ""
         if st == QWebEngineLoadingInfo.LoadStatus.LoadFailedStatus or http_5xx:
+            if st == QWebEngineLoadingInfo.LoadStatus.LoadFailedStatus:
+                if self._looks_like_cert_verifier_changed(error_text):
+                    self._handle_browser_failure(
+                        "tls_verifier_changed",
+                        (
+                            "tls_verifier_changed_subresource_or_navigation: "
+                            f"url={info.url().toString()}, "
+                            f"domain={info.errorDomain().name}, code={info.errorCode()}, "
+                            f"message={error_text!r}"
+                        ),
+                    )
+                    return
+                if self._looks_like_tls_certificate_failure(
+                    info.errorDomain(),
+                    info.errorCode(),
+                    error_text,
+                ):
+                    self._handle_browser_failure(
+                        "certificate",
+                        (
+                            "tls_cert_error: "
+                            f"url={info.url().toString()}, "
+                            f"domain={info.errorDomain().name}, code={info.errorCode()}, "
+                            f"message={error_text!r}"
+                        ),
+                    )
+                    return
             self._handle_browser_failure(
                 "load",
                 (
                     "WebEngine load failed for "
                     f"{info.url().toString()}: status={st.name}, "
                     f"domain={info.errorDomain().name}, code={info.errorCode()}, "
-                    f"message={info.errorString()!r}"
+                    f"message={error_text!r}"
                 ),
             )
             return
 
         if st == QWebEngineLoadingInfo.LoadStatus.LoadSucceededStatus:
             self._retry_count = 0
+            self._cert_recovery_count = 0
+            self._force_fresh_profile_next_recovery = False
             self._reload_when_shown = False
             self._recreate_when_shown = False
             self._retry_timer.stop()
@@ -394,8 +523,12 @@ class MainWindow(QMainWindow):
             self._recreate_when_shown = False
             self._hidden_since_monotonic = None
             if need_recreate and not self._force_quit:
+                recovery_mode = (
+                    self._force_fresh_profile_next_recovery or self._using_recovery_profile
+                )
                 self._recreate_browser(
                     f"Browser was hidden for recovery and must be recreated after {hidden_for:.1f}s",
+                    force_recovery_profile=recovery_mode,
                 )
             elif need_reload and not self._force_quit and self._web_view is not None:
                 self._web_view.load(QUrl(self._start_url))
