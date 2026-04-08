@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 
@@ -21,6 +22,8 @@ sealed class MainForm : Form
     private bool _retryDueWhenVisible;
     private bool _webViewInitialized;
     private DateTime? _lastHiddenUtc;
+    private CoreWebView2DevToolsProtocolEventReceiver? _networkLoadingFailedReceiver;
+    private bool _forceFreshProfileOnNextTlsRecovery;
 
     private int _certRecoveryCount;
     private bool _certRecoveryInProgress;
@@ -62,7 +65,7 @@ sealed class MainForm : Form
                 userDataFolder: dataDir);
 
             await _webView.EnsureCoreWebView2Async(env);
-            WireWebView();
+            await WireWebViewAsync();
 
             _webViewInitialized = true;
             NavigateMain();
@@ -79,7 +82,7 @@ sealed class MainForm : Form
         }
     }
 
-    private void WireWebView()
+    private async Task WireWebViewAsync()
     {
         _allowedHost = new Uri(_startUrl).Host;
         _webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
@@ -90,6 +93,10 @@ sealed class MainForm : Form
         _webView.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
         _webView.CoreWebView2.ServerCertificateErrorDetected += OnServerCertificateErrorDetected;
         _webView.CoreWebView2.NewWindowRequested += OnNewWindowRequested;
+
+        _networkLoadingFailedReceiver = _webView.CoreWebView2.GetDevToolsProtocolEventReceiver("Network.loadingFailed");
+        _networkLoadingFailedReceiver.DevToolsProtocolEventReceived += OnDevToolsNetworkLoadingFailed;
+        await _webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Network.enable", "{}");
     }
 
     private void UnwireWebView()
@@ -101,6 +108,32 @@ sealed class MainForm : Form
         _webView.CoreWebView2.NavigationCompleted -= OnNavigationCompleted;
         _webView.CoreWebView2.ServerCertificateErrorDetected -= OnServerCertificateErrorDetected;
         _webView.CoreWebView2.NewWindowRequested -= OnNewWindowRequested;
+        if (_networkLoadingFailedReceiver != null)
+        {
+            _networkLoadingFailedReceiver.DevToolsProtocolEventReceived -= OnDevToolsNetworkLoadingFailed;
+            _networkLoadingFailedReceiver = null;
+        }
+    }
+
+    private void OnDevToolsNetworkLoadingFailed(object? sender, CoreWebView2DevToolsProtocolEventReceivedEventArgs e)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(e.ParameterObjectAsJson);
+            if (!doc.RootElement.TryGetProperty("errorText", out var errorTextNode))
+                return;
+
+            var errorText = errorTextNode.GetString();
+            if (!string.Equals(errorText, "net::ERR_CERT_VERIFIER_CHANGED", StringComparison.Ordinal))
+                return;
+
+            _forceFreshProfileOnNextTlsRecovery = true;
+            BeginInvoke(EnqueueTlsRecovery);
+        }
+        catch
+        {
+            // Ignore malformed DevTools payloads.
+        }
     }
 
     private void OnNavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs args)
@@ -180,6 +213,9 @@ sealed class MainForm : Form
         try
         {
             var dataDir = Path.Combine(AppContext.BaseDirectory, "WebView2Data");
+            var profileDir = _forceFreshProfileOnNextTlsRecovery
+                ? Path.Combine(AppContext.BaseDirectory, "WebView2Data-recovery")
+                : dataDir;
 
             UnwireWebView();
             Controls.Remove(_webView);
@@ -192,9 +228,9 @@ sealed class MainForm : Form
             };
             Controls.Add(_webView);
 
-            var env = await CoreWebView2Environment.CreateAsync(userDataFolder: dataDir);
+            var env = await CoreWebView2Environment.CreateAsync(userDataFolder: profileDir);
             await _webView.EnsureCoreWebView2Async(env);
-            WireWebView();
+            await WireWebViewAsync();
 
             _pendingNavKind = PendingNavKind.Unknown;
             NavigateMain();
@@ -297,6 +333,7 @@ sealed class MainForm : Form
         {
             _navRetries = 0;
             _certRecoveryCount = 0;
+            _forceFreshProfileOnNextTlsRecovery = false;
         }
     }
 
